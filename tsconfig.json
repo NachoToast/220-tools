@@ -1,17 +1,16 @@
 {
     "compilerOptions": {
         "target": "ES5",
-        "module": "CommonJS",
+        "module": "ES6",
         "sourceMap": true,
+        "noImplicitAny": true,
+        "moduleResolution": "node",
         "outDir": "build",
         "rootDir": "src",
         "strict": true,
         "alwaysStrict": true,
         "types": ["node"],
-        "esModuleInterop": true,
-        "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "resolveJsonModule": true,
         "noFallthroughCasesInSwitch": true
     },
     "include": ["src/**/*"]
