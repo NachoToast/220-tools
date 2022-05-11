@@ -1,14 +1,30 @@
 {
     "name": "220-tools",
     "version": "1.0.0",
-    "main": "index.js",
+    "homepage": "https://220.nachotoast.com",
+    "repository": {},
+    "private": true,
     "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "dev": "nodemon"
+    },
     "devDependencies": {
+        "@types/node": "^17.0.32",
         "@typescript-eslint/eslint-plugin": "^5.23.0",
         "@typescript-eslint/parser": "^5.23.0",
         "eslint": "^8.15.0",
         "eslint-config-prettier": "^8.5.0",
-        "gh-pages": "^4.0.0",
-        "prettier": "^2.6.2"
+        "nodemon": "^2.0.16",
+        "prettier": "^2.6.2",
+        "ts-node": "^10.7.0",
+        "typescript": "^4.6.4"
+    },
+    "nodemonConfig": {
+        "watch": [
+            "src"
+        ],
+        "ext": "ts",
+        "exec": "yarn build"
     }
 }
