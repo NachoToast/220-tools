@@ -1,0 +1,14 @@
+{
+    "name": "220-tools",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^5.23.0",
+        "@typescript-eslint/parser": "^5.23.0",
+        "eslint": "^8.15.0",
+        "eslint-config-prettier": "^8.5.0",
+        "gh-pages": "^4.0.0",
+        "prettier": "^2.6.2"
+    }
+}
