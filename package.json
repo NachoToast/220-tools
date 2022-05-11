@@ -7,7 +7,10 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc",
-        "dev": "nodemon"
+        "dev": "nodemon",
+        "lint": "eslint --ext .ts --max-warnings=0",
+        "typecheck": "tsc --noEmit",
+        "check-all": "yarn lint && yarn typecheck"
     },
     "devDependencies": {
         "@types/node": "^17.0.32",
