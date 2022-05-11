@@ -2,7 +2,7 @@
 
 Various graphing, searching, and other computational tools for UoA CompSci220.
 
--   Repository structure inspired by [ibrahima92's example](https://github.com/ibrahima92/pokedex-typescript).
+-   Repository structure inspired by [ibrahima92](https://github.com/ibrahima92/pokedex-typescript) and [juristr](https://github.com/juristr/webpack-typescript-starter)'s examples.
 
 ## Installation
 
