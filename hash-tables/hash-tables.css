@@ -1,0 +1,18 @@
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td {
+    border: solid 1px black;
+}
+
+.collisionCounter_no {
+    background-color: red;
+}
+.collisionCounter_maybe {
+   background-color: yellow;
+}
+.collisionCounter_yes {
+    background-color: green;
+}

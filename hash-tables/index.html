@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hash Tables</title>
+    <link href="hash-tables.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+    <main>
+        <div id="collisionCounter">
+            <h2>Collision Counter</h3>
+            <p>Count total collisions for a given set of data, hash table size, collision handling, and hash function.</p>
+            <div>
+                <label for="collisionCounterTableSize">Table size:</label>
+                <input id="collisionCounterTableSize" type="number" />
+                <label for="collisionCounterData">Input data:</label>
+                <input id="collisionCounterData" placeholder="6 7 8 36">
+                <label for="collisionCounterHandling">Collision Handling:</label>
+                <select id="collisionCounterHandling">
+                    <option value="linear">Linear</option>
+                </select>
+                <div title="If checked, will automatically go through insertion steps.">
+                    <input id="collisionCounterAutoStep" type="checkbox" oninput="CollisionCounter.toggleAutoStep(this.checked);" checked />
+                    <label for="collisionCounterAutoStep">Automatic Mode</label>
+                </div>
+            </div>
+            <div style="margin-top: 2px; display: flex; align-items: center;">
+                <label for="collisionCounterHashFunction">Hash Function:</label>
+                <textarea id="collisionCounterHashFunction" autocomplete="off" autocapitalize="off" placeholder="(x) => x % 20" rows="1" ></textarea>
+                <button style="margin-left: 4px;" id="collisionCounterStart" onclick="CollisionCounter.displayTable(this)">Go</button>
+            </div>
+            <table id="collisionCounterTable" style="visibility: hidden; margin-top: 2px;">
+                <thead>
+                    <tr id="collisionCounterTable_indexes">
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="collisionCounterTable_values">
+                    </tr>
+                </tbody>
+            </table>
+            <div id="collisionCounterOutput" style="visibility: hidden;">
+                    <p id="collisionCounterOutput_main">Putting 4 at index 9 (0 collisions so far)</p>
+                    <p style="color: red;" id="collisionCounterOutput_warn">Index 9 is taken by 18</p>
+                <p id="collisionCounterOutput_total">Total Collisions: 20</p>
+            </div>
+            <button id="collisionCounterNext" style="visibility: hidden;">Next Step</button>
+        </div>
+    </main>
+    <script defer src="./hash-tables.js"></script>
+</body>
+</html>

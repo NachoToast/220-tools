@@ -5,13 +5,11 @@
         "sourceMap": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
-        "outDir": "build",
-        "rootDir": "src",
         "strict": true,
         "alwaysStrict": true,
         "types": ["node"],
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true
     },
-    "include": ["src/**/*"]
+    "include": ["src/**/*", "hash-tables"]
 }
