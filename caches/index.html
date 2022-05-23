@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caches</title>
+    <link href="caches.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+    <main>
+        <div id="LRUReplacement">
+            <h2>LRU Replacement</h3>
+            <p>Record hits and misses using the standard RLU replacement policy on a fully-associative cache.</p>
+            <div>
+                <label for="LRUReplacementCacheSize">Cache size:</label>
+                <input id="LRUReplacementCacheSize" type="number" placeholder="4" oninput="LRUReplacement.cacheSize = Number(this.value)" />
+                <label for="LRUReplacementInputData">Input data:</label>
+                <input id="LRUReplacementInputData" placeholder="0x16 105 8.2 0xFF" oninput="LRUReplacement.inputData(this.value)" >
+                <input id="LRUReplacementShowHexNumbers" type="checkbox" oninput="LRUReplacement.setHexMode(this.checked)" />
+                <label for="LRUReplacementShowHexNumbers">Hex Display</label>
+                <div title="If checked, will automatically go through insertion steps.">
+                    <input id="LRUReplacementAutoMode" type="checkbox" oninput="LRUReplacement.setAutoMode(this.checked)" checked />
+                    <label for="LRUReplacementAutoMode">Automatic Mode</label>
+                </div>
+                <div id="LRUReplacementInputTableContainer"></div>
+                <button id="LRUReplacementGoButton" onclick="LRUReplacement.start()">Go</button>
+            </div>
+            <div id="LRUReplacementOutputContainer">
+            </div>
+            <button id="LRUReplacementNextButton" style="visibility: hidden; margin-top: 2px;">Next Step</button>
+        </div>
+    </main>
+    <script defer src="./caches.js"></script>
+</body>
+</html>

@@ -35,9 +35,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-function doSomething() {
-    console.log('hello world2!');
-}
 var CollisionHandling;
 (function (CollisionHandling) {
     CollisionHandling["Linear"] = "linear";
@@ -217,6 +214,7 @@ var CollisionCounter = /** @class */ (function () {
     CollisionCounter._totalOutput = document.getElementById('collisionCounterOutput_total');
     CollisionCounter._tableSize = 0;
     CollisionCounter._inputData = [];
+    // TODO: other collision handling methods (quadratic, double hashing, etc...)
     CollisionCounter._collisionHandling = CollisionHandling.Linear;
     CollisionCounter.autoStep = true;
     CollisionCounter._nextButton = document.getElementById('collisionCounterNext');

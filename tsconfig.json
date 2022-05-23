@@ -11,5 +11,5 @@
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true
     },
-    "include": ["src/**/*", "hash-tables"]
+    "exclude": [".github", "node_modules", "images"]
 }

@@ -24,7 +24,7 @@
         "typescript": "^4.6.4"
     },
     "nodemonConfig": {
-        "ext": "ts",
+        "ext": "ts,html",
         "exec": "yarn build"
     }
 }

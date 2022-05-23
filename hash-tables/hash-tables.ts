@@ -1,7 +1,3 @@
-function doSomething() {
-    console.log('hello world2!');
-}
-
 enum CollisionHandling {
     Linear = 'linear',
 }
@@ -24,6 +20,7 @@ abstract class CollisionCounter {
     private static _tableSize = 0;
     private static _inputData: number[] = [];
 
+    // TODO: other collision handling methods (quadratic, double hashing, etc...)
     private static _collisionHandling: CollisionHandling = CollisionHandling.Linear;
     private static _hashFunction: (x: number) => number;
 
