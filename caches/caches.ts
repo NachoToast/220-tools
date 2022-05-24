@@ -36,6 +36,10 @@ class Table {
     public getColumn(column: number): Cell[] {
         return this._rows.map(({ cells }) => cells[column]);
     }
+
+    public getRow(row: number): Row {
+        return this._rows[row];
+    }
 }
 
 class Row {
@@ -78,43 +82,26 @@ interface DummyCacheItem {
     localCounter: number;
 }
 
-class DummyCache {
+class DummyCache<T> {
     private readonly _size: number;
-    public readonly data: Array<DummyCacheItem | null>;
+    public readonly data: Array<T | null>;
 
     public constructor(size: number) {
         this._size = size;
-        this.data = new Array<DummyCacheItem | null>(size).fill(null);
+        this.data = new Array<T | null>(size).fill(null);
     }
 
-    /** Returns index of an address in the cache, -1 if not found. */
-    public getItem(address: number): number {
-        return this.data.findIndex((e) => e?.address === address);
+    public getItemAt(index: number): T | null {
+        return this.data[index];
     }
 
-    /** Updates an items local counter. */
-    public updateItem(index: number, globalCounter: number): void {
-        this.data[index]!.localCounter = globalCounter;
+    public setItemAt(index: number, payload: T | null) {
+        this.data[index] = payload;
     }
 
-    /** Adds an item at the next available line, throws an error if no line is empty. */
-    public addItem(address: number, globalCounter: number): number {
-        for (let i = 0; i < this._size; i++) {
-            if (this.data[i] === null) {
-                this.data[i] = { address, localCounter: globalCounter };
-                return i;
-            }
-        }
-        throw new Error(`Trying to add item but no lines free`);
-    }
-
-    /** Removes the item with the lowest local counter. */
-    public evict(): { index: number; item: DummyCacheItem } {
-        const locals = (this.data as DummyCacheItem[]).map(({ localCounter }) => localCounter);
-        const lowestItemIndex = locals.indexOf(Math.min(...locals));
-        const output = { index: lowestItemIndex, item: this.data[lowestItemIndex]! };
-        this.data[lowestItemIndex] = null;
-        return output;
+    /** Returns the index of the first empty slot, -1 if none. */
+    public getFirstFreeSlot(): number {
+        return this.data.findIndex((e) => e === null);
     }
 
     public isFull(): boolean {
@@ -122,12 +109,19 @@ class DummyCache {
     }
 }
 
+enum CacheTypes {
+    FulllyAssociative = 'fullyAssociative',
+    DirectMapped = 'directMapped',
+    SetAssociative = 'setAssociative',
+}
+
 abstract class LRUReplacement {
     private static _cacheSize: number = 4;
     private static _inputData: number[] = [];
+
     private static _hexMode: boolean = false;
     private static _autoMode: boolean = true;
-    private static _inProgress = false;
+    private static _cacheType: CacheTypes = CacheTypes.FulllyAssociative;
 
     // table containers
     private static _inputTableContainer = document.getElementById(
@@ -142,6 +136,12 @@ abstract class LRUReplacement {
     private static _goButton = document.getElementById('LRUReplacementGoButton')! as HTMLButtonElement;
     private static _outputContainer = document.getElementById('LRUReplacementOutputContainer')! as HTMLDivElement;
     private static _nextButton = document.getElementById('LRUReplacementNextButton')! as HTMLButtonElement;
+    private static _cacheTypeSelect = document.getElementById('LRUReplacementCacheTypeSelect')! as HTMLSelectElement;
+
+    private static _inputElements: HTMLInputElement[] = [
+        document.getElementById('LRUReplacementCacheSize')! as HTMLInputElement,
+        document.getElementById('LRUReplacementInputData')! as HTMLInputElement,
+    ];
 
     public static set cacheSize(n: number) {
         if (this._inProgress) return;
@@ -162,10 +162,16 @@ abstract class LRUReplacement {
         this._autoModeToggler.checked = m;
     }
 
+    public static setCacheType(m: CacheTypes) {
+        if (this._inProgress) return;
+        this._cacheType = m;
+        this._cacheTypeSelect.value = m;
+    }
+
     public static inputData(d: string): void {
         if (this._inProgress) return;
         this._inputData = d
-            .split(/\s/g)
+            .split(/\s|,/g)
             .filter((e) => !!e)
             .map((e) => Number(e))
             .filter((e) => !Number.isNaN(e));
@@ -208,11 +214,24 @@ abstract class LRUReplacement {
 
     public static async start(): Promise<void> {
         if (!this._table || !this._inputData.length || !this._table || this._inProgress) return;
-        if (!this._autoMode) this._nextButton.style.visibility = 'visible';
         this._inProgress = true;
-        this._goButton.disabled = true;
-        this._outputContainer.innerHTML = '';
 
+        switch (this._cacheType) {
+            case CacheTypes.FulllyAssociative:
+                await this.startFullyAssociative();
+                break;
+            case CacheTypes.DirectMapped:
+                await this.startDirectMapped();
+                break;
+            case CacheTypes.SetAssociative:
+                await this.startSetAssociative();
+                break;
+        }
+        this._inProgress = false;
+    }
+
+    private static async startFullyAssociative(): Promise<void> {
+        this._table = this._table!;
         const tableData: string[][] = new Array<string[]>(this._cacheSize).fill([]).map((_, i) => {
             const row = new Array<string>(3);
             row[0] = i.toString();
@@ -230,7 +249,7 @@ abstract class LRUReplacement {
         const statusElement = document.createElement('p');
         this._outputContainer.appendChild(statusElement);
 
-        const cache = new DummyCache(this._cacheSize);
+        const cache = new DummyCache<DummyCacheItem>(this._cacheSize);
 
         for (let i = 0, len = this._inputData.length; i < len; i++) {
             statusElement.innerText = `Sequence #${i + 1}`;
@@ -239,31 +258,36 @@ abstract class LRUReplacement {
             const tableColumn = this._table.getColumn(i);
             tableColumn.forEach(({ element: { classList } }) => classList.add('selected'));
 
-            const index = cache.getItem(this._inputData[i]);
+            const index = cache.data.findIndex((e) => e?.address === this._inputData[i]);
             if (index !== -1) {
                 // hit
-                cache.updateItem(index, globalCounter);
+                cache.setItemAt(index, { address: this._inputData[i], localCounter: globalCounter });
                 this._table.getCellAt(2, i).setValue(`H`);
                 cacheTable.getCellAt(index, 2).setValue(globalCounter.toString());
                 statusElement.innerText += `\nCache hit, incremented local counter.`;
             } else if (!cache.isFull()) {
                 // compulsory miss
-                const addedAt = cache.addItem(this._inputData[i], globalCounter);
-                this._table.getCellAt(2, i).setValue(`M`);
-                cacheTable.getCellAt(addedAt, 1).setValue(this.dataToString(this._inputData[i]));
-                cacheTable.getCellAt(addedAt, 2).setValue(globalCounter.toString());
-                statusElement.innerText += `\nCompulsory miss, added new address to line ${addedAt}.`;
-            } else {
-                // capacity miss
-                // we don't get conflict misses on fully-associative caches
-                const { index, item } = cache.evict();
-                const addedIndex = cache.addItem(this._inputData[i], globalCounter);
+                const addedIndex = cache.getFirstFreeSlot();
+                cache.setItemAt(addedIndex, { address: this._inputData[i], localCounter: globalCounter });
                 this._table.getCellAt(2, i).setValue(`M`);
                 cacheTable.getCellAt(addedIndex, 1).setValue(this.dataToString(this._inputData[i]));
                 cacheTable.getCellAt(addedIndex, 2).setValue(globalCounter.toString());
+                statusElement.innerText += `\nCompulsory miss, added new address to line ${addedIndex}.`;
+            } else {
+                // capacity miss
+                // we don't get conflict misses on fully-associative caches
+                // const { index, item } = cache.evict();
+                const localCounters = cache.data.map((e) => e!.localCounter);
+                const indexOfLowest = localCounters.indexOf(Math.min(...localCounters));
+
+                const removedItem = cache.getItemAt(indexOfLowest)!;
+                cache.setItemAt(indexOfLowest, { address: this._inputData[i], localCounter: globalCounter });
+                this._table.getCellAt(2, i).setValue(`M`);
+                cacheTable.getCellAt(indexOfLowest, 1).setValue(this.dataToString(this._inputData[i]));
+                cacheTable.getCellAt(indexOfLowest, 2).setValue(globalCounter.toString());
                 statusElement.innerText = `\nCapacity miss, removed ${this.dataToString(
-                    item.address,
-                )} from line 0 (had lowest local counter, ${item.localCounter}).`;
+                    removedItem.address,
+                )} from line 0 (had lowest local counter, ${removedItem.localCounter}).`;
             }
 
             await this.wait();
@@ -271,16 +295,253 @@ abstract class LRUReplacement {
         }
 
         statusElement.innerText = `Done!`;
+    }
 
-        if (!this._autoMode) this._nextButton.style.visibility = 'hidden';
-        this._inProgress = false;
-        this._goButton.disabled = false;
+    private static async startDirectMapped(): Promise<void> {
+        this._table = this._table!;
+        const tableData: string[][] = new Array<string[]>(this._cacheSize).fill([]).map((_, i) => {
+            const row = new Array<string>(2);
+            row[0] = i.toString();
+            return row;
+        });
+
+        const cacheTable = new Table(tableData, ['Line #', 'Address']);
+        cacheTable.element.style.width = '50%';
+        this._outputContainer.appendChild(cacheTable.element);
+
+        const statusElement = document.createElement('p');
+        this._outputContainer.appendChild(statusElement);
+
+        const cache = new DummyCache<number>(this._cacheSize);
+
+        const slotFunction = (address: number) => address % this._cacheSize;
+
+        for (let i = 0, len = this._inputData.length; i < len; i++) {
+            statusElement.innerText = `Sequence #${i + 1}`;
+            const tableColumn = this._table.getColumn(i);
+            tableColumn.forEach(({ element: { classList } }) => classList.add('selected'));
+
+            const slotNumber = slotFunction(this._inputData[i]);
+            const existing = cache.getItemAt(slotNumber);
+            if (existing !== null && existing === this._inputData[i]) {
+                // hit
+                this._table.getCellAt(2, i).setValue(`H`);
+                statusElement.innerText += `\nCache hit.`;
+            } else if (existing === null) {
+                // compulsory miss
+                cache.setItemAt(slotNumber, this._inputData[i]);
+                this._table.getCellAt(2, i).setValue(`M`);
+                cacheTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                statusElement.innerText += `\nCompulsory miss, added new address to line ${slotNumber}.`;
+            } else {
+                // conflict miss
+                // we don't get capacity misses on direct-mapped caches
+                cache.setItemAt(slotNumber, this._inputData[i]);
+                this._table.getCellAt(2, i).setValue(`M`);
+                cacheTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                statusElement.innerText = `\nConflict miss, replaced ${this.dataToString(
+                    existing,
+                )} with ${this.dataToString(this._inputData[i])} (line ${slotNumber}).`;
+            }
+
+            await this.wait();
+            tableColumn.forEach(({ element: { classList } }) => classList.remove('selected'));
+        }
+
+        statusElement.innerText = `Done!`;
+    }
+
+    private static async startSetAssociative(): Promise<void> {
+        if (this._cacheSize % 2 !== 0) {
+            window.alert('Cache size must be even for 2-way set associative caching.');
+            return;
+        }
+        this._table = this._table!;
+
+        const leftTableData: string[][] = new Array<string[]>(this._cacheSize / 2).fill([]).map((_, i) => {
+            const row = new Array<string>(3);
+            row[0] = i.toString();
+            return row;
+        });
+        const rightTableData: string[][] = new Array<string[]>(this._cacheSize / 2).fill([]).map((_, i) => {
+            const row = new Array<string>(3);
+            row[0] = i.toString();
+            return row;
+        });
+
+        const leftTable = new Table(leftTableData, ['Line #', 'Address', 'Local Counter']);
+        const rightTable = new Table(rightTableData, ['Line #', 'Address', 'Local Counter']);
+
+        leftTable.element.style.width = '40%';
+        rightTable.element.style.width = '40%';
+
+        const blockContainer = document.createElement('div');
+        blockContainer.style.display = 'flex';
+        blockContainer.style.justifyContent = 'space-evenly';
+        blockContainer.appendChild(leftTable.element);
+        blockContainer.appendChild(rightTable.element);
+        this._outputContainer.appendChild(blockContainer);
+
+        let globalCounter = 0;
+        const globalCounterElement = document.createElement('p');
+        this._outputContainer.appendChild(globalCounterElement);
+
+        const statusElement = document.createElement('p');
+        this._outputContainer.appendChild(statusElement);
+
+        const leftCache = new DummyCache<DummyCacheItem>(this._cacheSize / 2);
+        const rightCache = new DummyCache<DummyCacheItem>(this._cacheSize / 2);
+
+        const slotFunction = (address: number) => address % (this._cacheSize / 2);
+
+        for (let i = 0, len = this._inputData.length; i < len; i++) {
+            statusElement.innerText = `Sequence #${i + 1}`;
+            globalCounter++;
+
+            const tableColumn = this._table.getColumn(i);
+            tableColumn.forEach(({ element: { classList } }) => classList.add('selected'));
+
+            const slotNumber = slotFunction(this._inputData[i]);
+
+            const existingA = leftCache.getItemAt(slotNumber);
+            const existingB = rightCache.getItemAt(slotNumber);
+
+            if (existingA?.address === this._inputData[i]) {
+                // hit A
+                leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                this._table.getCellAt(2, i).setValue('H');
+                leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                statusElement.innerText += `\nCache hit (set 0), incremented local counter`;
+            } else if (existingB?.address === this._inputData[i]) {
+                // hit B
+                rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                this._table.getCellAt(2, i).setValue('H');
+                rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                statusElement.innerText += `\nCache hit (set 1), incremented local counter`;
+            } else if (existingA === null) {
+                // compulsory miss primary
+                leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                this._table.getCellAt(2, i).setValue('M');
+                leftTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                statusElement.innerText += `\nCompulsory miss, added new address to line ${slotNumber} (set 0).`;
+            } else if (existingB === null) {
+                // compulsory miss fallback
+                rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                this._table.getCellAt(2, i).setValue('M');
+                rightTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                statusElement.innerText += `\nCompulsory miss, added new address to line ${slotNumber} (set 1).`;
+            } else {
+                // conflict miss
+                // we don't get capacity misses on set associative caches
+                this._table.getCellAt(2, i).setValue('M');
+
+                if (existingA.localCounter < existingB.localCounter) {
+                    // remove A
+                    leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                    leftTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                    leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                    statusElement.innerText += `\nConflict miss, replaced ${this.dataToString(
+                        existingA.address,
+                    )} with ${this.dataToString(this._inputData[i])} (set 0, line ${slotNumber})`;
+                } else {
+                    // remove B
+                    rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                    rightTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                    rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                    statusElement.innerText += `\nConflict miss, replaced ${this.dataToString(
+                        existingB.address,
+                    )} with ${this.dataToString(this._inputData[i])} (set 1, line ${slotNumber})`;
+                }
+            }
+
+            await this.wait();
+            tableColumn.forEach(({ element: { classList } }) => classList.remove('selected'));
+        }
+    }
+
+    public static loadSampleData(): void {
+        if (this._inProgress) return;
+
+        const inputData = '0x23  0x13  0x17  0x13  0x1F  0x23  0x19  0x13  0x17  0x1F  0x23  0x13';
+
+        (document.getElementById('LRUReplacementCacheSize')! as HTMLInputElement).value = '4';
+        LRUReplacement.cacheSize = 4;
+
+        (document.getElementById('LRUReplacementInputData')! as HTMLInputElement).value = inputData;
+        LRUReplacement.inputData(inputData);
+
+        LRUReplacement.setHexMode(true);
+
+        LRUReplacement.setCacheType(CacheTypes.FulllyAssociative);
+    }
+
+    public static loadDirectSampleData(): void {
+        if (this._inProgress) return;
+
+        const inputData = '8 8 7 3 7 3 7 3';
+
+        (document.getElementById('LRUReplacementCacheSize')! as HTMLInputElement).value = '4';
+        LRUReplacement.cacheSize = 4;
+
+        (document.getElementById('LRUReplacementInputData')! as HTMLInputElement).value = inputData;
+        LRUReplacement.inputData(inputData);
+
+        LRUReplacement.setHexMode(false);
+
+        LRUReplacement.setCacheType(CacheTypes.DirectMapped);
+    }
+
+    public static loadSetAssociativeSampleData1(): void {
+        if (this._inProgress) return;
+
+        const inputData = '3 7 5 9 3 7 5 9';
+        (document.getElementById('LRUReplacementCacheSize')! as HTMLInputElement).value = '4';
+        LRUReplacement.cacheSize = 4;
+
+        (document.getElementById('LRUReplacementInputData')! as HTMLInputElement).value = inputData;
+        LRUReplacement.inputData(inputData);
+
+        LRUReplacement.setHexMode(false);
+
+        LRUReplacement.setCacheType(CacheTypes.SetAssociative);
+    }
+
+    public static loadSetAssociativeSampleData2(): void {
+        if (this._inProgress) return;
+
+        const inputData = '8 8 7 3 7 3 7 3';
+        (document.getElementById('LRUReplacementCacheSize')! as HTMLInputElement).value = '4';
+        LRUReplacement.cacheSize = 4;
+
+        (document.getElementById('LRUReplacementInputData')! as HTMLInputElement).value = inputData;
+        LRUReplacement.inputData(inputData);
+
+        LRUReplacement.setHexMode(false);
+
+        LRUReplacement.setCacheType(CacheTypes.SetAssociative);
+    }
+
+    private static __inProgress: boolean = false;
+    private static set _inProgress(b: boolean) {
+        this.__inProgress = b;
+
+        if (b) this._outputContainer.innerHTML = '';
+        if (!this._autoMode) this._nextButton.style.visibility = b ? 'visible' : 'hidden';
+
+        this._goButton.disabled = b;
+        this._hexModeToggler.disabled = b;
+        this._autoModeToggler.disabled = b;
+        this._cacheTypeSelect.disabled = b;
+
+        this._inputElements.forEach((e) => (e.disabled = b));
+
+        if (b && this._table) {
+            this._table.getRow(2).cells.forEach((cell) => cell.setValue(''));
+        }
+    }
+    private static get _inProgress(): boolean {
+        return this.__inProgress;
     }
 }
-
-// test data
-// LRUReplacement.setAutoMode(false);
-// LRUReplacement.setHexMode(true);
-// LRUReplacement.cacheSize = 4;
-// LRUReplacement.inputData('0x23  0x13  0x17  0x13  0x1F  0x23  0x19  0x13  0x17  0x1F  0x23  0x13');
-// LRUReplacement.start();

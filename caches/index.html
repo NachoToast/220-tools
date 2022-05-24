@@ -10,8 +10,8 @@
 <body>
     <main>
         <div id="LRUReplacement">
-            <h2>LRU Replacement</h3>
-            <p>Record hits and misses using the standard RLU replacement policy on a fully-associative cache.</p>
+            <h2>Cache Emulation</h3>
+            <p>Record hits and misses using the standard RLU replacement policy on a fully-associative cache, or modulus on direct-mapped and 2-way set associative caches.</p>
             <div>
                 <label for="LRUReplacementCacheSize">Cache size:</label>
                 <input id="LRUReplacementCacheSize" type="number" placeholder="4" oninput="LRUReplacement.cacheSize = Number(this.value)" />
@@ -19,12 +19,26 @@
                 <input id="LRUReplacementInputData" placeholder="0x16 105 8.2 0xFF" oninput="LRUReplacement.inputData(this.value)" >
                 <input id="LRUReplacementShowHexNumbers" type="checkbox" oninput="LRUReplacement.setHexMode(this.checked)" />
                 <label for="LRUReplacementShowHexNumbers">Hex Display</label>
+                <select name="cacheType" id="LRUReplacementCacheTypeSelect" oninput="LRUReplacement.setCacheType(this.value)">
+                    <option value="fullyAssociative">Fully-Associative</option>
+                    <option value="directMapped">Direct-Mapped</option>
+                    <option value="setAssociative">Set Associative</option>
+                </select>
                 <div title="If checked, will automatically go through insertion steps.">
                     <input id="LRUReplacementAutoMode" type="checkbox" oninput="LRUReplacement.setAutoMode(this.checked)" checked />
                     <label for="LRUReplacementAutoMode">Automatic Mode</label>
                 </div>
-                <div id="LRUReplacementInputTableContainer"></div>
-                <button id="LRUReplacementGoButton" onclick="LRUReplacement.start()">Go</button>
+                <div style="display:flex;">
+                    <div style="flex-grow:1">
+                        
+                        <button id="LRUReplacementGoButton" onclick="LRUReplacement.start()">Go</button>
+                    </div>
+                    <button onclick="LRUReplacement.loadSampleData()">Sample Data</button>
+                    <button onclick="LRUReplacement.loadDirectSampleData()">Sample Data (Direct)</button>
+                    <button onclick="LRUReplacement.loadSetAssociativeSampleData1()">Sample Data (Set Associative 1)</button>
+                    <button onclick="LRUReplacement.loadSetAssociativeSampleData2()">Sample Data (Set Associative 2)</button>
+                </div>
+                <div id="LRUReplacementInputTableContainer" style="margin: 1rem 0;"></div>
             </div>
             <div id="LRUReplacementOutputContainer">
             </div>

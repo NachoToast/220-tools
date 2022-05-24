@@ -76,6 +76,9 @@ var Table = /** @class */ (function () {
             return cells[column];
         });
     };
+    Table.prototype.getRow = function (row) {
+        return this._rows[row];
+    };
     return Table;
 }());
 var Row = /** @class */ (function () {
@@ -115,40 +118,27 @@ var DummyCache = /** @class */ (function () {
         this._size = size;
         this.data = new Array(size).fill(null);
     }
-    /** Returns index of an address in the cache, -1 if not found. */
-    DummyCache.prototype.getItem = function (address) {
-        return this.data.findIndex(function (e) { return (e === null || e === void 0 ? void 0 : e.address) === address; });
+    DummyCache.prototype.getItemAt = function (index) {
+        return this.data[index];
     };
-    /** Updates an items local counter. */
-    DummyCache.prototype.updateItem = function (index, globalCounter) {
-        this.data[index].localCounter = globalCounter;
+    DummyCache.prototype.setItemAt = function (index, payload) {
+        this.data[index] = payload;
     };
-    /** Adds an item at the next available line, throws an error if no line is empty. */
-    DummyCache.prototype.addItem = function (address, globalCounter) {
-        for (var i = 0; i < this._size; i++) {
-            if (this.data[i] === null) {
-                this.data[i] = { address: address, localCounter: globalCounter };
-                return i;
-            }
-        }
-        throw new Error("Trying to add item but no lines free");
-    };
-    /** Removes the item with the lowest local counter. */
-    DummyCache.prototype.evict = function () {
-        var locals = this.data.map(function (_a) {
-            var localCounter = _a.localCounter;
-            return localCounter;
-        });
-        var lowestItemIndex = locals.indexOf(Math.min.apply(Math, locals));
-        var output = { index: lowestItemIndex, item: this.data[lowestItemIndex] };
-        this.data[lowestItemIndex] = null;
-        return output;
+    /** Returns the index of the first empty slot, -1 if none. */
+    DummyCache.prototype.getFirstFreeSlot = function () {
+        return this.data.findIndex(function (e) { return e === null; });
     };
     DummyCache.prototype.isFull = function () {
         return this.data.every(function (e) { return e !== null; });
     };
     return DummyCache;
 }());
+var CacheTypes;
+(function (CacheTypes) {
+    CacheTypes["FulllyAssociative"] = "fullyAssociative";
+    CacheTypes["DirectMapped"] = "directMapped";
+    CacheTypes["SetAssociative"] = "setAssociative";
+})(CacheTypes || (CacheTypes = {}));
 var LRUReplacement = /** @class */ (function () {
     function LRUReplacement() {
     }
@@ -174,11 +164,17 @@ var LRUReplacement = /** @class */ (function () {
         this._autoMode = m;
         this._autoModeToggler.checked = m;
     };
+    LRUReplacement.setCacheType = function (m) {
+        if (this._inProgress)
+            return;
+        this._cacheType = m;
+        this._cacheTypeSelect.value = m;
+    };
     LRUReplacement.inputData = function (d) {
         if (this._inProgress)
             return;
         this._inputData = d
-            .split(/\s/g)
+            .split(/\s|,/g)
             .filter(function (e) { return !!e; })
             .map(function (e) { return Number(e); })
             .filter(function (e) { return !Number.isNaN(e); });
@@ -218,17 +214,47 @@ var LRUReplacement = /** @class */ (function () {
     };
     LRUReplacement.start = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var tableData, cacheTable, globalCounter, globalCounterElement, statusElement, cache, i, len, tableColumn, index, addedAt, _a, index_1, item, addedIndex;
+            var _a;
             return __generator(this, function (_b) {
                 switch (_b.label) {
                     case 0:
                         if (!this._table || !this._inputData.length || !this._table || this._inProgress)
                             return [2 /*return*/];
-                        if (!this._autoMode)
-                            this._nextButton.style.visibility = 'visible';
                         this._inProgress = true;
-                        this._goButton.disabled = true;
-                        this._outputContainer.innerHTML = '';
+                        _a = this._cacheType;
+                        switch (_a) {
+                            case CacheTypes.FulllyAssociative: return [3 /*break*/, 1];
+                            case CacheTypes.DirectMapped: return [3 /*break*/, 3];
+                            case CacheTypes.SetAssociative: return [3 /*break*/, 5];
+                        }
+                        return [3 /*break*/, 7];
+                    case 1: return [4 /*yield*/, this.startFullyAssociative()];
+                    case 2:
+                        _b.sent();
+                        return [3 /*break*/, 7];
+                    case 3: return [4 /*yield*/, this.startDirectMapped()];
+                    case 4:
+                        _b.sent();
+                        return [3 /*break*/, 7];
+                    case 5: return [4 /*yield*/, this.startSetAssociative()];
+                    case 6:
+                        _b.sent();
+                        return [3 /*break*/, 7];
+                    case 7:
+                        this._inProgress = false;
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    LRUReplacement.startFullyAssociative = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var tableData, cacheTable, globalCounter, globalCounterElement, statusElement, cache, _loop_1, this_1, i, len;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        this._table = this._table;
                         tableData = new Array(this._cacheSize).fill([]).map(function (_, i) {
                             var row = new Array(3);
                             row[0] = i.toString();
@@ -243,68 +269,335 @@ var LRUReplacement = /** @class */ (function () {
                         statusElement = document.createElement('p');
                         this._outputContainer.appendChild(statusElement);
                         cache = new DummyCache(this._cacheSize);
+                        _loop_1 = function (i, len) {
+                            var tableColumn, index, addedIndex, localCounters, indexOfLowest, removedItem;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
+                                    case 0:
+                                        statusElement.innerText = "Sequence #".concat(i + 1);
+                                        globalCounter++;
+                                        globalCounterElement.innerText = "Global Counter: ".concat(globalCounter.toString());
+                                        tableColumn = this_1._table.getColumn(i);
+                                        tableColumn.forEach(function (_a) {
+                                            var classList = _a.element.classList;
+                                            return classList.add('selected');
+                                        });
+                                        index = cache.data.findIndex(function (e) { return (e === null || e === void 0 ? void 0 : e.address) === _this._inputData[i]; });
+                                        if (index !== -1) {
+                                            // hit
+                                            cache.setItemAt(index, { address: this_1._inputData[i], localCounter: globalCounter });
+                                            this_1._table.getCellAt(2, i).setValue("H");
+                                            cacheTable.getCellAt(index, 2).setValue(globalCounter.toString());
+                                            statusElement.innerText += "\nCache hit, incremented local counter.";
+                                        }
+                                        else if (!cache.isFull()) {
+                                            addedIndex = cache.getFirstFreeSlot();
+                                            cache.setItemAt(addedIndex, { address: this_1._inputData[i], localCounter: globalCounter });
+                                            this_1._table.getCellAt(2, i).setValue("M");
+                                            cacheTable.getCellAt(addedIndex, 1).setValue(this_1.dataToString(this_1._inputData[i]));
+                                            cacheTable.getCellAt(addedIndex, 2).setValue(globalCounter.toString());
+                                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(addedIndex, ".");
+                                        }
+                                        else {
+                                            localCounters = cache.data.map(function (e) { return e.localCounter; });
+                                            indexOfLowest = localCounters.indexOf(Math.min.apply(Math, localCounters));
+                                            removedItem = cache.getItemAt(indexOfLowest);
+                                            cache.setItemAt(indexOfLowest, { address: this_1._inputData[i], localCounter: globalCounter });
+                                            this_1._table.getCellAt(2, i).setValue("M");
+                                            cacheTable.getCellAt(indexOfLowest, 1).setValue(this_1.dataToString(this_1._inputData[i]));
+                                            cacheTable.getCellAt(indexOfLowest, 2).setValue(globalCounter.toString());
+                                            statusElement.innerText = "\nCapacity miss, removed ".concat(this_1.dataToString(removedItem.address), " from line 0 (had lowest local counter, ").concat(removedItem.localCounter, ").");
+                                        }
+                                        return [4 /*yield*/, this_1.wait()];
+                                    case 1:
+                                        _b.sent();
+                                        tableColumn.forEach(function (_a) {
+                                            var classList = _a.element.classList;
+                                            return classList.remove('selected');
+                                        });
+                                        return [2 /*return*/];
+                                }
+                            });
+                        };
+                        this_1 = this;
                         i = 0, len = this._inputData.length;
-                        _b.label = 1;
+                        _a.label = 1;
                     case 1:
                         if (!(i < len)) return [3 /*break*/, 4];
-                        statusElement.innerText = "Sequence #".concat(i + 1);
-                        globalCounter++;
-                        globalCounterElement.innerText = "Global Counter: ".concat(globalCounter.toString());
-                        tableColumn = this._table.getColumn(i);
-                        tableColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.add('selected');
-                        });
-                        index = cache.getItem(this._inputData[i]);
-                        if (index !== -1) {
-                            // hit
-                            cache.updateItem(index, globalCounter);
-                            this._table.getCellAt(2, i).setValue("H");
-                            cacheTable.getCellAt(index, 2).setValue(globalCounter.toString());
-                            statusElement.innerText += "\nCache hit, incremented local counter.";
-                        }
-                        else if (!cache.isFull()) {
-                            addedAt = cache.addItem(this._inputData[i], globalCounter);
-                            this._table.getCellAt(2, i).setValue("M");
-                            cacheTable.getCellAt(addedAt, 1).setValue(this.dataToString(this._inputData[i]));
-                            cacheTable.getCellAt(addedAt, 2).setValue(globalCounter.toString());
-                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(addedAt, ".");
-                        }
-                        else {
-                            _a = cache.evict(), index_1 = _a.index, item = _a.item;
-                            addedIndex = cache.addItem(this._inputData[i], globalCounter);
-                            this._table.getCellAt(2, i).setValue("M");
-                            cacheTable.getCellAt(addedIndex, 1).setValue(this.dataToString(this._inputData[i]));
-                            cacheTable.getCellAt(addedIndex, 2).setValue(globalCounter.toString());
-                            statusElement.innerText = "\nCapacity miss, removed ".concat(this.dataToString(item.address), " from line 0 (had lowest local counter, ").concat(item.localCounter, ").");
-                        }
-                        return [4 /*yield*/, this.wait()];
+                        return [5 /*yield**/, _loop_1(i, len)];
                     case 2:
-                        _b.sent();
-                        tableColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.remove('selected');
-                        });
-                        _b.label = 3;
+                        _a.sent();
+                        _a.label = 3;
                     case 3:
                         i++;
                         return [3 /*break*/, 1];
                     case 4:
                         statusElement.innerText = "Done!";
-                        if (!this._autoMode)
-                            this._nextButton.style.visibility = 'hidden';
-                        this._inProgress = false;
-                        this._goButton.disabled = false;
                         return [2 /*return*/];
                 }
             });
         });
     };
+    LRUReplacement.startDirectMapped = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var tableData, cacheTable, statusElement, cache, slotFunction, i, len, tableColumn, slotNumber, existing;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        this._table = this._table;
+                        tableData = new Array(this._cacheSize).fill([]).map(function (_, i) {
+                            var row = new Array(2);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        cacheTable = new Table(tableData, ['Line #', 'Address']);
+                        cacheTable.element.style.width = '50%';
+                        this._outputContainer.appendChild(cacheTable.element);
+                        statusElement = document.createElement('p');
+                        this._outputContainer.appendChild(statusElement);
+                        cache = new DummyCache(this._cacheSize);
+                        slotFunction = function (address) { return address % _this._cacheSize; };
+                        i = 0, len = this._inputData.length;
+                        _a.label = 1;
+                    case 1:
+                        if (!(i < len)) return [3 /*break*/, 4];
+                        statusElement.innerText = "Sequence #".concat(i + 1);
+                        tableColumn = this._table.getColumn(i);
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.add('selected');
+                        });
+                        slotNumber = slotFunction(this._inputData[i]);
+                        existing = cache.getItemAt(slotNumber);
+                        if (existing !== null && existing === this._inputData[i]) {
+                            // hit
+                            this._table.getCellAt(2, i).setValue("H");
+                            statusElement.innerText += "\nCache hit.";
+                        }
+                        else if (existing === null) {
+                            // compulsory miss
+                            cache.setItemAt(slotNumber, this._inputData[i]);
+                            this._table.getCellAt(2, i).setValue("M");
+                            cacheTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(slotNumber, ".");
+                        }
+                        else {
+                            // conflict miss
+                            // we don't get capacity misses on direct-mapped caches
+                            cache.setItemAt(slotNumber, this._inputData[i]);
+                            this._table.getCellAt(2, i).setValue("M");
+                            cacheTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                            statusElement.innerText = "\nConflict miss, replaced ".concat(this.dataToString(existing), " with ").concat(this.dataToString(this._inputData[i]), " (line ").concat(slotNumber, ").");
+                        }
+                        return [4 /*yield*/, this.wait()];
+                    case 2:
+                        _a.sent();
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.remove('selected');
+                        });
+                        _a.label = 3;
+                    case 3:
+                        i++;
+                        return [3 /*break*/, 1];
+                    case 4:
+                        statusElement.innerText = "Done!";
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    LRUReplacement.startSetAssociative = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var leftTableData, rightTableData, leftTable, rightTable, blockContainer, globalCounter, globalCounterElement, statusElement, leftCache, rightCache, slotFunction, i, len, tableColumn, slotNumber, existingA, existingB;
+            var _this = this;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (this._cacheSize % 2 !== 0) {
+                            window.alert('Cache size must be even for 2-way set associative caching.');
+                            return [2 /*return*/];
+                        }
+                        this._table = this._table;
+                        leftTableData = new Array(this._cacheSize / 2).fill([]).map(function (_, i) {
+                            var row = new Array(3);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        rightTableData = new Array(this._cacheSize / 2).fill([]).map(function (_, i) {
+                            var row = new Array(3);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        leftTable = new Table(leftTableData, ['Line #', 'Address', 'Local Counter']);
+                        rightTable = new Table(rightTableData, ['Line #', 'Address', 'Local Counter']);
+                        leftTable.element.style.width = '40%';
+                        rightTable.element.style.width = '40%';
+                        blockContainer = document.createElement('div');
+                        blockContainer.style.display = 'flex';
+                        blockContainer.style.justifyContent = 'space-evenly';
+                        blockContainer.appendChild(leftTable.element);
+                        blockContainer.appendChild(rightTable.element);
+                        this._outputContainer.appendChild(blockContainer);
+                        globalCounter = 0;
+                        globalCounterElement = document.createElement('p');
+                        this._outputContainer.appendChild(globalCounterElement);
+                        statusElement = document.createElement('p');
+                        this._outputContainer.appendChild(statusElement);
+                        leftCache = new DummyCache(this._cacheSize / 2);
+                        rightCache = new DummyCache(this._cacheSize / 2);
+                        slotFunction = function (address) { return address % (_this._cacheSize / 2); };
+                        i = 0, len = this._inputData.length;
+                        _a.label = 1;
+                    case 1:
+                        if (!(i < len)) return [3 /*break*/, 4];
+                        statusElement.innerText = "Sequence #".concat(i + 1);
+                        globalCounter++;
+                        tableColumn = this._table.getColumn(i);
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.add('selected');
+                        });
+                        slotNumber = slotFunction(this._inputData[i]);
+                        existingA = leftCache.getItemAt(slotNumber);
+                        existingB = rightCache.getItemAt(slotNumber);
+                        if ((existingA === null || existingA === void 0 ? void 0 : existingA.address) === this._inputData[i]) {
+                            // hit A
+                            leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            this._table.getCellAt(2, i).setValue('H');
+                            leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            statusElement.innerText += "\nCache hit (set 0), incremented local counter";
+                        }
+                        else if ((existingB === null || existingB === void 0 ? void 0 : existingB.address) === this._inputData[i]) {
+                            // hit B
+                            rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            this._table.getCellAt(2, i).setValue('H');
+                            rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            statusElement.innerText += "\nCache hit (set 1), incremented local counter";
+                        }
+                        else if (existingA === null) {
+                            // compulsory miss primary
+                            leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            this._table.getCellAt(2, i).setValue('M');
+                            leftTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                            leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(slotNumber, " (set 0).");
+                        }
+                        else if (existingB === null) {
+                            // compulsory miss fallback
+                            rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            this._table.getCellAt(2, i).setValue('M');
+                            rightTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                            rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(slotNumber, " (set 1).");
+                        }
+                        else {
+                            // conflict miss
+                            // we don't get capacity misses on set associative caches
+                            this._table.getCellAt(2, i).setValue('M');
+                            if (existingA.localCounter < existingB.localCounter) {
+                                // remove A
+                                leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                                leftTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                                leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                                statusElement.innerText += "\nConflict miss, replaced ".concat(this.dataToString(existingA.address), " with ").concat(this.dataToString(this._inputData[i]), " (set 0, line ").concat(slotNumber, ")");
+                            }
+                            else {
+                                // remove B
+                                rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                                rightTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
+                                rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                                statusElement.innerText += "\nConflict miss, replaced ".concat(this.dataToString(existingB.address), " with ").concat(this.dataToString(this._inputData[i]), " (set 1, line ").concat(slotNumber, ")");
+                            }
+                        }
+                        return [4 /*yield*/, this.wait()];
+                    case 2:
+                        _a.sent();
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.remove('selected');
+                        });
+                        _a.label = 3;
+                    case 3:
+                        i++;
+                        return [3 /*break*/, 1];
+                    case 4: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    LRUReplacement.loadSampleData = function () {
+        if (this._inProgress)
+            return;
+        var inputData = '0x23  0x13  0x17  0x13  0x1F  0x23  0x19  0x13  0x17  0x1F  0x23  0x13';
+        document.getElementById('LRUReplacementCacheSize').value = '4';
+        LRUReplacement.cacheSize = 4;
+        document.getElementById('LRUReplacementInputData').value = inputData;
+        LRUReplacement.inputData(inputData);
+        LRUReplacement.setHexMode(true);
+        LRUReplacement.setCacheType(CacheTypes.FulllyAssociative);
+    };
+    LRUReplacement.loadDirectSampleData = function () {
+        if (this._inProgress)
+            return;
+        var inputData = '8 8 7 3 7 3 7 3';
+        document.getElementById('LRUReplacementCacheSize').value = '4';
+        LRUReplacement.cacheSize = 4;
+        document.getElementById('LRUReplacementInputData').value = inputData;
+        LRUReplacement.inputData(inputData);
+        LRUReplacement.setHexMode(false);
+        LRUReplacement.setCacheType(CacheTypes.DirectMapped);
+    };
+    LRUReplacement.loadSetAssociativeSampleData1 = function () {
+        if (this._inProgress)
+            return;
+        var inputData = '3 7 5 9 3 7 5 9';
+        document.getElementById('LRUReplacementCacheSize').value = '4';
+        LRUReplacement.cacheSize = 4;
+        document.getElementById('LRUReplacementInputData').value = inputData;
+        LRUReplacement.inputData(inputData);
+        LRUReplacement.setHexMode(false);
+        LRUReplacement.setCacheType(CacheTypes.SetAssociative);
+    };
+    LRUReplacement.loadSetAssociativeSampleData2 = function () {
+        if (this._inProgress)
+            return;
+        var inputData = '8 8 7 3 7 3 7 3';
+        document.getElementById('LRUReplacementCacheSize').value = '4';
+        LRUReplacement.cacheSize = 4;
+        document.getElementById('LRUReplacementInputData').value = inputData;
+        LRUReplacement.inputData(inputData);
+        LRUReplacement.setHexMode(false);
+        LRUReplacement.setCacheType(CacheTypes.SetAssociative);
+    };
+    Object.defineProperty(LRUReplacement, "_inProgress", {
+        get: function () {
+            return this.__inProgress;
+        },
+        set: function (b) {
+            this.__inProgress = b;
+            if (b)
+                this._outputContainer.innerHTML = '';
+            if (!this._autoMode)
+                this._nextButton.style.visibility = b ? 'visible' : 'hidden';
+            this._goButton.disabled = b;
+            this._hexModeToggler.disabled = b;
+            this._autoModeToggler.disabled = b;
+            this._cacheTypeSelect.disabled = b;
+            this._inputElements.forEach(function (e) { return (e.disabled = b); });
+            if (b && this._table) {
+                this._table.getRow(2).cells.forEach(function (cell) { return cell.setValue(''); });
+            }
+        },
+        enumerable: false,
+        configurable: true
+    });
     LRUReplacement._cacheSize = 4;
     LRUReplacement._inputData = [];
     LRUReplacement._hexMode = false;
     LRUReplacement._autoMode = true;
-    LRUReplacement._inProgress = false;
+    LRUReplacement._cacheType = CacheTypes.FulllyAssociative;
     // table containers
     LRUReplacement._inputTableContainer = document.getElementById('LRUReplacementInputTableContainer');
     // mode togglers
@@ -314,12 +607,12 @@ var LRUReplacement = /** @class */ (function () {
     LRUReplacement._goButton = document.getElementById('LRUReplacementGoButton');
     LRUReplacement._outputContainer = document.getElementById('LRUReplacementOutputContainer');
     LRUReplacement._nextButton = document.getElementById('LRUReplacementNextButton');
+    LRUReplacement._cacheTypeSelect = document.getElementById('LRUReplacementCacheTypeSelect');
+    LRUReplacement._inputElements = [
+        document.getElementById('LRUReplacementCacheSize'),
+        document.getElementById('LRUReplacementInputData'),
+    ];
+    LRUReplacement.__inProgress = false;
     return LRUReplacement;
 }());
-// test data
-// LRUReplacement.setAutoMode(false);
-// LRUReplacement.setHexMode(true);
-// LRUReplacement.cacheSize = 4;
-// LRUReplacement.inputData('0x23  0x13  0x17  0x13  0x1F  0x23  0x19  0x13  0x17  0x1F  0x23  0x13');
-// LRUReplacement.start();
 //# sourceMappingURL=caches.js.map
