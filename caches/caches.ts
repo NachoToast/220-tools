@@ -117,8 +117,8 @@ class DummyCache<T> {
 
 interface EmulatorData {
     addressBusSize: number;
-    cacheLines: number;
-    wordsPerLine: number;
+    indexFieldBits: number;
+    offsetFieldBits: number;
     bytesPerWord: number;
     hexMode: boolean;
     autoMode: boolean;
@@ -138,8 +138,8 @@ class CacheEmulator {
 
     public static readonly Defaults: EmulatorData = {
         addressBusSize: 20,
-        cacheLines: 32,
-        wordsPerLine: 16,
+        indexFieldBits: 5,
+        offsetFieldBits: 6,
         bytesPerWord: 4,
         hexMode: true,
         autoMode: false,
@@ -182,21 +182,21 @@ class CacheEmulator {
             parent: this._containers.inputContainer1,
             onInput: this.setAddressBusSize,
         }),
-        cacheLines: this.createInputElement({
-            label: 'Number of cache lines: ',
+        indexFieldBits: this.createInputElement({
+            label: 'Index (line #) field bits: ',
             title: 'This changes index bits required',
             type: 'number',
             classes: ['indexBits'],
             parent: this._containers.inputContainer1,
-            onInput: this.setCacheLines,
+            onInput: this.setIndexFieldBits,
         }),
-        wordsPerLine: this.createInputElement({
-            label: 'Words per line: ',
+        offsetFieldBits: this.createInputElement({
+            label: 'Offset field bits: ',
             classes: ['offsetBits'],
             title: 'This changes offset bits required',
             type: 'number',
             parent: this._containers.inputContainer1,
-            onInput: this.setWordsPerLine,
+            onInput: this.setOffsetFieldBits,
         }),
         bytesPerWord: this.createInputElement({
             label: 'Bytes per word: ',
@@ -276,35 +276,22 @@ class CacheEmulator {
         this.handleInputData();
     }
 
-    public getBitsInfo(): { tag: number; index: number; offset: number; bytesPerLine: number } {
-        const bytesPerLine = this._data.bytesPerWord * this._data.wordsPerLine;
-        const index = Math.ceil(Math.log2(this._data.cacheLines || 1));
-        const offset = Math.ceil(Math.log2(bytesPerLine || 1));
-        const tag = this._data.addressBusSize - index - offset;
-        return { tag, index, offset, bytesPerLine };
-    }
-
     public setAddressBusSize() {
-        const minAddressSize =
-            Math.ceil(Math.log2(this._data.cacheLines)) + Math.ceil(Math.log2(this._data.wordsPerLine));
+        this._data.addressBusSize = Number(this._inputElements.addressBusSize.value) ?? this._data.addressBusSize;
 
-        this._data.addressBusSize = Math.max(
-            Number(this._inputElements.addressBusSize.value) ?? this._data.addressBusSize,
-            minAddressSize,
-        );
         this._inputElements.addressBusSize.value = this._data.addressBusSize.toString();
         this.showIntermediateOutput();
     }
 
-    public setCacheLines() {
-        this._data.cacheLines = Number(this._inputElements.cacheLines.value) ?? this._data.cacheLines;
-        this._inputElements.cacheLines.value = this._data.cacheLines.toString();
+    public setIndexFieldBits() {
+        this._data.indexFieldBits = Number(this._inputElements.indexFieldBits.value) ?? this._data.indexFieldBits;
+        this._inputElements.indexFieldBits.value = this._data.indexFieldBits.toString();
         this.setAddressBusSize();
     }
 
-    public setWordsPerLine() {
-        this._data.wordsPerLine = Number(this._inputElements.wordsPerLine.value) ?? this._data.wordsPerLine;
-        this._inputElements.wordsPerLine.value = this._data.wordsPerLine.toString();
+    public setOffsetFieldBits() {
+        this._data.offsetFieldBits = Number(this._inputElements.offsetFieldBits.value) ?? this._data.offsetFieldBits;
+        this._inputElements.offsetFieldBits.value = this._data.offsetFieldBits.toString();
         this.setAddressBusSize();
     }
 
@@ -402,7 +389,7 @@ class CacheEmulator {
     }
 
     public async doFullyAssociative(inputTable: Table): Promise<void> {
-        const tableData: string[][] = new Array<string[]>(this._data.cacheLines).fill([]).map((_, i) => {
+        const tableData: string[][] = new Array<string[]>(2 ** this._data.indexFieldBits).fill([]).map((_, i) => {
             const row = new Array<string>(3);
             row[0] = i.toString();
             return row;
@@ -412,7 +399,7 @@ class CacheEmulator {
 
         this._containers.outputTableContainer.appendChild(cacheTable.element);
 
-        const cache = new DummyCache<CacheItem>(this._data.cacheLines);
+        const cache = new DummyCache<CacheItem>(2 ** this._data.indexFieldBits);
         let globalCounter = 0;
 
         for (let i = 0, len = this._inputData.length; i < len; i++) {
@@ -491,9 +478,11 @@ class CacheEmulator {
     }
 
     public async doDirectMapped(inputTable: Table): Promise<void> {
-        const { tag, index, offset } = this.getBitsInfo();
+        const index = this._data.indexFieldBits;
+        const offset = this._data.offsetFieldBits;
+        const tag = this._data.addressBusSize - index - offset;
 
-        const tableData: string[][] = new Array<string[]>(this._data.cacheLines).fill([]).map((_, i) => {
+        const tableData: string[][] = new Array<string[]>(2 ** this._data.indexFieldBits).fill([]).map((_, i) => {
             const row = new Array<string>(3);
             row[0] = i.toString();
             return row;
@@ -503,7 +492,7 @@ class CacheEmulator {
 
         this._containers.outputTableContainer.appendChild(cacheTable.element);
 
-        const cache = new Array<{ lowest: number; highest: number; tag: number }>(this._data.cacheLines);
+        const cache = new Array<{ lowest: number; highest: number; tag: number }>(2 ** this._data.indexFieldBits);
 
         for (let i = 0, len = this._inputData.length; i < len; i++) {
             const output: string[] = [`Sequence <b>#${i + 1}</b>: ${this.parseString(this._inputData[i])}`];
@@ -532,7 +521,7 @@ class CacheEmulator {
             // extract tag, line number, and offset values from address
             const tagNumber = queriedAddress >> (this._data.addressBusSize - tag);
             const lineNumber = (queriedAddress >> offset) & (2 ** index - 1);
-            const actualLineNumber = lineNumber % this._data.cacheLines;
+            const actualLineNumber = lineNumber % 2 ** this._data.indexFieldBits;
             const offsetValue = queriedAddress & (2 ** offset - 1);
 
             output.push(
@@ -540,7 +529,7 @@ class CacheEmulator {
                 `Index (Line) = <span class="indexBits">${lineNumber
                     .toString(2)
                     .padStart(index, '0')}</span> = <span class="indexBits">${lineNumber}</span> % ${
-                    this._data.cacheLines
+                    2 ** this._data.indexFieldBits
                 } = <b>${actualLineNumber}</b>`,
                 `Offset (Column) = <span class="offsetBits">${offsetValue
                     .toString(2)
@@ -601,7 +590,7 @@ class CacheEmulator {
     }
 
     public async doDirectMappedSimple(inputTable: Table): Promise<void> {
-        const tableData: string[][] = new Array<string[]>(this._data.cacheLines).fill([]).map((_, i) => {
+        const tableData: string[][] = new Array<string[]>(2 ** this._data.indexFieldBits).fill([]).map((_, i) => {
             const row = new Array<string>(2);
             row[0] = i.toString();
             return row;
@@ -610,16 +599,16 @@ class CacheEmulator {
         const cacheTable = new Table(tableData, ['Line #', 'Address']);
         this._containers.outputTableContainer.appendChild(cacheTable.element);
 
-        const cache = new DummyCache<number>(this._data.cacheLines);
+        const cache = new DummyCache<number>(2 ** this._data.indexFieldBits);
 
         for (let i = 0, len = this._inputData.length; i < len; i++) {
-            const slotNumber = this._inputData[i] % this._data.cacheLines;
+            const slotNumber = this._inputData[i] % 2 ** this._data.indexFieldBits;
 
             const output: string[] = [
                 `Sequence <b>#${i + 1}</b>: ${this.parseString(this._inputData[i])}`,
-                `Slot # = ${this.parseString(this._inputData[i])} % ${this._data.cacheLines} = <b>${this.parseString(
-                    slotNumber,
-                )}</b>`,
+                `Slot # = ${this.parseString(this._inputData[i])} % ${
+                    2 ** this._data.indexFieldBits
+                } = <b>${this.parseString(slotNumber)}</b>`,
             ];
 
             const tableColumn = inputTable.getColumn(i);
@@ -677,23 +666,21 @@ class CacheEmulator {
     }
 
     public async doSetAssociative(inputTable: Table): Promise<void> {
-        if (this._data.cacheLines % 2 !== 0) {
-            this._containers.outputDetailsContainer.innerHTML =
-                '<span style="color: red">Cache size (number of lines) must be even for 2-way set associative caching</span>';
-            return;
-        }
+        const leftTableData: string[][] = new Array<string[]>(2 ** this._data.indexFieldBits / 2)
+            .fill([])
+            .map((_, i) => {
+                const row = new Array<string>(3);
+                row[0] = i.toString();
+                return row;
+            });
 
-        const leftTableData: string[][] = new Array<string[]>(this._data.cacheLines / 2).fill([]).map((_, i) => {
-            const row = new Array<string>(3);
-            row[0] = i.toString();
-            return row;
-        });
-
-        const rightTableData: string[][] = new Array<string[]>(this._data.cacheLines / 2).fill([]).map((_, i) => {
-            const row = new Array<string>(3);
-            row[0] = i.toString();
-            return row;
-        });
+        const rightTableData: string[][] = new Array<string[]>(2 ** this._data.indexFieldBits / 2)
+            .fill([])
+            .map((_, i) => {
+                const row = new Array<string>(3);
+                row[0] = i.toString();
+                return row;
+            });
 
         const leftTable = new Table(leftTableData, ['Line #', 'Address', 'Local Counter']);
         const rightTable = new Table(rightTableData, ['Line #', 'Address', 'Local Counter']);
@@ -708,20 +695,20 @@ class CacheEmulator {
         blockContainer.appendChild(rightTable.element);
         this._containers.outputTableContainer.appendChild(blockContainer);
 
-        const leftCache = new DummyCache<CacheItem>(this._data.cacheLines / 2);
-        const rightCache = new DummyCache<CacheItem>(this._data.cacheLines / 2);
+        const leftCache = new DummyCache<CacheItem>(2 ** this._data.indexFieldBits / 2);
+        const rightCache = new DummyCache<CacheItem>(2 ** this._data.indexFieldBits / 2);
         let globalCounter = 0;
 
         for (let i = 0, len = this._inputData.length; i < len; i++) {
             globalCounter++;
-            const slotNumber = this._inputData[i] % (this._data.cacheLines / 2);
+            const slotNumber = this._inputData[i] % (2 ** this._data.indexFieldBits / 2);
 
             const output: string[] = [
                 `Sequence <b>#${i + 1}</b>: ${this.parseString(this._inputData[i])}`,
                 `Global Counter: <b>${globalCounter}</b>`,
-                `Slot # = ${this.parseString(this._inputData[i])} % ${this._data.cacheLines / 2} = ${this.parseString(
-                    slotNumber,
-                )}`,
+                `Slot # = ${this.parseString(this._inputData[i])} % ${
+                    2 ** this._data.indexFieldBits / 2
+                } = ${this.parseString(slotNumber)}`,
             ];
 
             const tableColumn = inputTable.getColumn(i);
@@ -846,14 +833,21 @@ class CacheEmulator {
     }
 
     public showIntermediateOutput(): void {
-        const { tag, index, offset } = this.getBitsInfo();
+        const index = this._data.indexFieldBits;
+        const offset = this._data.offsetFieldBits;
+        const tag = this._data.addressBusSize - index - offset;
 
-        const totalBytes = this._data.cacheLines * this._data.wordsPerLine * this._data.bytesPerWord;
+        const numLines = 2 ** index;
+        const bytesPerLine = 2 ** offset;
+        const wordsPerLine = bytesPerLine / this._data.bytesPerWord;
+
+        const totalBytes = numLines * bytesPerLine;
         const totalAsLog = Math.log2(totalBytes);
         const extraSizeInfo = Number.isInteger(totalAsLog) ? ` (2<sup>${totalAsLog}</sup>)` : '';
 
         const output: string[] = [
             `Addresses to this cache have <b><span class="tagBits">${tag}</span></b> bits for tag, <b><span class="indexBits">${index}</span></b> bits for index, and <b><span class="offsetBits">${offset}</span></b> bits for offset.`,
+            `This means the cache has <b><span class="offsetBits">${bytesPerLine}</span></b> offset values, <b><span class="indexBits">${numLines}</span></b> index values, and <span class="offsetBits"><b>${wordsPerLine}</b></span> words per line.`,
             `This cache can store a total of <b>${totalBytes}</b>${extraSizeInfo} bytes.`,
         ];
 
@@ -870,7 +864,8 @@ class CacheEmulator {
 
     /** Parse a number into a binary string, spacing out nibbles. */
     public parseToBinary(n: number): string {
-        const { offset, index } = this.getBitsInfo();
+        const index = this._data.indexFieldBits;
+        const offset = this._data.offsetFieldBits;
         let output = '<span class="tagBits">';
 
         const endOffset = this._data.addressBusSize - offset - 1;

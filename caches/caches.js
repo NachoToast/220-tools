@@ -173,21 +173,21 @@ var CacheEmulator = /** @class */ (function () {
                 parent: this._containers.inputContainer1,
                 onInput: this.setAddressBusSize,
             }),
-            cacheLines: this.createInputElement({
-                label: 'Number of cache lines: ',
+            indexFieldBits: this.createInputElement({
+                label: 'Index (line #) field bits: ',
                 title: 'This changes index bits required',
                 type: 'number',
                 classes: ['indexBits'],
                 parent: this._containers.inputContainer1,
-                onInput: this.setCacheLines,
+                onInput: this.setIndexFieldBits,
             }),
-            wordsPerLine: this.createInputElement({
-                label: 'Words per line: ',
+            offsetFieldBits: this.createInputElement({
+                label: 'Offset field bits: ',
                 classes: ['offsetBits'],
                 title: 'This changes offset bits required',
                 type: 'number',
                 parent: this._containers.inputContainer1,
-                onInput: this.setWordsPerLine,
+                onInput: this.setOffsetFieldBits,
             }),
             bytesPerWord: this.createInputElement({
                 label: 'Bytes per word: ',
@@ -256,30 +256,22 @@ var CacheEmulator = /** @class */ (function () {
         this.showIntermediateOutput();
         this.handleInputData();
     }
-    CacheEmulator.prototype.getBitsInfo = function () {
-        var bytesPerLine = this._data.bytesPerWord * this._data.wordsPerLine;
-        var index = Math.ceil(Math.log2(this._data.cacheLines || 1));
-        var offset = Math.ceil(Math.log2(bytesPerLine || 1));
-        var tag = this._data.addressBusSize - index - offset;
-        return { tag: tag, index: index, offset: offset, bytesPerLine: bytesPerLine };
-    };
     CacheEmulator.prototype.setAddressBusSize = function () {
         var _a;
-        var minAddressSize = Math.ceil(Math.log2(this._data.cacheLines)) + Math.ceil(Math.log2(this._data.wordsPerLine));
-        this._data.addressBusSize = Math.max((_a = Number(this._inputElements.addressBusSize.value)) !== null && _a !== void 0 ? _a : this._data.addressBusSize, minAddressSize);
+        this._data.addressBusSize = (_a = Number(this._inputElements.addressBusSize.value)) !== null && _a !== void 0 ? _a : this._data.addressBusSize;
         this._inputElements.addressBusSize.value = this._data.addressBusSize.toString();
         this.showIntermediateOutput();
     };
-    CacheEmulator.prototype.setCacheLines = function () {
+    CacheEmulator.prototype.setIndexFieldBits = function () {
         var _a;
-        this._data.cacheLines = (_a = Number(this._inputElements.cacheLines.value)) !== null && _a !== void 0 ? _a : this._data.cacheLines;
-        this._inputElements.cacheLines.value = this._data.cacheLines.toString();
+        this._data.indexFieldBits = (_a = Number(this._inputElements.indexFieldBits.value)) !== null && _a !== void 0 ? _a : this._data.indexFieldBits;
+        this._inputElements.indexFieldBits.value = this._data.indexFieldBits.toString();
         this.setAddressBusSize();
     };
-    CacheEmulator.prototype.setWordsPerLine = function () {
+    CacheEmulator.prototype.setOffsetFieldBits = function () {
         var _a;
-        this._data.wordsPerLine = (_a = Number(this._inputElements.wordsPerLine.value)) !== null && _a !== void 0 ? _a : this._data.wordsPerLine;
-        this._inputElements.wordsPerLine.value = this._data.wordsPerLine.toString();
+        this._data.offsetFieldBits = (_a = Number(this._inputElements.offsetFieldBits.value)) !== null && _a !== void 0 ? _a : this._data.offsetFieldBits;
+        this._inputElements.offsetFieldBits.value = this._data.offsetFieldBits.toString();
         this.setAddressBusSize();
     };
     CacheEmulator.prototype.setBytesPerWord = function () {
@@ -393,14 +385,14 @@ var CacheEmulator = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        tableData = new Array(this._data.cacheLines).fill([]).map(function (_, i) {
+                        tableData = new Array(Math.pow(2, this._data.indexFieldBits)).fill([]).map(function (_, i) {
                             var row = new Array(3);
                             row[0] = i.toString();
                             return row;
                         });
                         cacheTable = new Table(tableData, ['Line #', 'Address', 'Local Counter']);
                         this._containers.outputTableContainer.appendChild(cacheTable.element);
-                        cache = new DummyCache(this._data.cacheLines);
+                        cache = new DummyCache(Math.pow(2, this._data.indexFieldBits));
                         globalCounter = 0;
                         _loop_1 = function (i, len) {
                             var output, tableColumn, cellsModified, index, addedIndex, allLocalCounters, indexOfLowest, removedItem;
@@ -514,21 +506,23 @@ var CacheEmulator = /** @class */ (function () {
     };
     CacheEmulator.prototype.doDirectMapped = function (inputTable) {
         return __awaiter(this, void 0, void 0, function () {
-            var _a, tag, index, offset, tableData, cacheTable, cache, i, len, output, tableColumn, queriedAddress, lowestAddress, highestAddress, tagNumber, lineNumber, actualLineNumber, offsetValue, searchRow, existingItem;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var index, offset, tag, tableData, cacheTable, cache, i, len, output, tableColumn, queriedAddress, lowestAddress, highestAddress, tagNumber, lineNumber, actualLineNumber, offsetValue, searchRow, existingItem;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
-                        _a = this.getBitsInfo(), tag = _a.tag, index = _a.index, offset = _a.offset;
-                        tableData = new Array(this._data.cacheLines).fill([]).map(function (_, i) {
+                        index = this._data.indexFieldBits;
+                        offset = this._data.offsetFieldBits;
+                        tag = this._data.addressBusSize - index - offset;
+                        tableData = new Array(Math.pow(2, this._data.indexFieldBits)).fill([]).map(function (_, i) {
                             var row = new Array(3);
                             row[0] = i.toString();
                             return row;
                         });
                         cacheTable = new Table(tableData, ['Line #', 'Address Range', 'Tag']);
                         this._containers.outputTableContainer.appendChild(cacheTable.element);
-                        cache = new Array(this._data.cacheLines);
+                        cache = new Array(Math.pow(2, this._data.indexFieldBits));
                         i = 0, len = this._inputData.length;
-                        _b.label = 1;
+                        _a.label = 1;
                     case 1:
                         if (!(i < len)) return [3 /*break*/, 5];
                         output = ["Sequence <b>#".concat(i + 1, "</b>: ").concat(this.parseString(this._inputData[i]))];
@@ -543,11 +537,11 @@ var CacheEmulator = /** @class */ (function () {
                         output.push("<div class='addressInfoContainer'>\n                    <div><span class=\"addressInfo\">Queried address</span> = ".concat(this.parseString(queriedAddress), " = ").concat(this.parseToBinary(queriedAddress), "</div>\n                    <div><span class=\"addressInfo\">Lowest address</span> = ").concat(this.parseString(lowestAddress), " = ").concat(this.parseToBinary(lowestAddress), "</div>\n                    <div><span class=\"addressInfo\">Highest address</span> = ").concat(this.parseString(highestAddress), " = ").concat(this.parseToBinary(highestAddress), "</div>\n                    </div>"));
                         tagNumber = queriedAddress >> (this._data.addressBusSize - tag);
                         lineNumber = (queriedAddress >> offset) & (Math.pow(2, index) - 1);
-                        actualLineNumber = lineNumber % this._data.cacheLines;
+                        actualLineNumber = lineNumber % Math.pow(2, this._data.indexFieldBits);
                         offsetValue = queriedAddress & (Math.pow(2, offset) - 1);
                         output.push("Tag = <span class=\"tagBits\">".concat(tagNumber.toString(2).padStart(tag, '0'), "</span> = <b>").concat(tagNumber, "</b>"), "Index (Line) = <span class=\"indexBits\">".concat(lineNumber
                             .toString(2)
-                            .padStart(index, '0'), "</span> = <span class=\"indexBits\">").concat(lineNumber, "</span> % ").concat(this._data.cacheLines, " = <b>").concat(actualLineNumber, "</b>"), "Offset (Column) = <span class=\"offsetBits\">".concat(offsetValue
+                            .padStart(index, '0'), "</span> = <span class=\"indexBits\">").concat(lineNumber, "</span> % ").concat(Math.pow(2, this._data.indexFieldBits), " = <b>").concat(actualLineNumber, "</b>"), "Offset (Column) = <span class=\"offsetBits\">".concat(offsetValue
                             .toString(2)
                             .padStart(offset, '0'), "</span> = <b>").concat(offsetValue, "</b>"));
                         searchRow = cacheTable.getRow(lineNumber);
@@ -560,7 +554,7 @@ var CacheEmulator = /** @class */ (function () {
                         this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
                         return [4 /*yield*/, this.wait()];
                     case 2:
-                        _b.sent();
+                        _a.sent();
                         output.pop();
                         existingItem = cache[lineNumber];
                         if (existingItem === undefined) {
@@ -601,7 +595,7 @@ var CacheEmulator = /** @class */ (function () {
                         this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
                         return [4 /*yield*/, this.wait()];
                     case 3:
-                        _b.sent();
+                        _a.sent();
                         // unhighlighting
                         tableColumn.forEach(function (_a) {
                             var classList = _a.element.classList;
@@ -611,7 +605,7 @@ var CacheEmulator = /** @class */ (function () {
                             var classList = _a.element.classList;
                             return classList.remove('selected', 'bad', 'neutral', 'good');
                         });
-                        _b.label = 4;
+                        _a.label = 4;
                     case 4:
                         i++;
                         return [3 /*break*/, 1];
@@ -626,22 +620,22 @@ var CacheEmulator = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        tableData = new Array(this._data.cacheLines).fill([]).map(function (_, i) {
+                        tableData = new Array(Math.pow(2, this._data.indexFieldBits)).fill([]).map(function (_, i) {
                             var row = new Array(2);
                             row[0] = i.toString();
                             return row;
                         });
                         cacheTable = new Table(tableData, ['Line #', 'Address']);
                         this._containers.outputTableContainer.appendChild(cacheTable.element);
-                        cache = new DummyCache(this._data.cacheLines);
+                        cache = new DummyCache(Math.pow(2, this._data.indexFieldBits));
                         i = 0, len = this._inputData.length;
                         _a.label = 1;
                     case 1:
                         if (!(i < len)) return [3 /*break*/, 5];
-                        slotNumber = this._inputData[i] % this._data.cacheLines;
+                        slotNumber = this._inputData[i] % Math.pow(2, this._data.indexFieldBits);
                         output = [
                             "Sequence <b>#".concat(i + 1, "</b>: ").concat(this.parseString(this._inputData[i])),
-                            "Slot # = ".concat(this.parseString(this._inputData[i]), " % ").concat(this._data.cacheLines, " = <b>").concat(this.parseString(slotNumber), "</b>"),
+                            "Slot # = ".concat(this.parseString(this._inputData[i]), " % ").concat(Math.pow(2, this._data.indexFieldBits), " = <b>").concat(this.parseString(slotNumber), "</b>"),
                         ];
                         tableColumn = inputTable.getColumn(i);
                         tableColumn.forEach(function (_a) {
@@ -727,17 +721,16 @@ var CacheEmulator = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (this._data.cacheLines % 2 !== 0) {
-                            this._containers.outputDetailsContainer.innerHTML =
-                                '<span style="color: red">Cache size (number of lines) must be even for 2-way set associative caching</span>';
-                            return [2 /*return*/];
-                        }
-                        leftTableData = new Array(this._data.cacheLines / 2).fill([]).map(function (_, i) {
+                        leftTableData = new Array(Math.pow(2, this._data.indexFieldBits) / 2)
+                            .fill([])
+                            .map(function (_, i) {
                             var row = new Array(3);
                             row[0] = i.toString();
                             return row;
                         });
-                        rightTableData = new Array(this._data.cacheLines / 2).fill([]).map(function (_, i) {
+                        rightTableData = new Array(Math.pow(2, this._data.indexFieldBits) / 2)
+                            .fill([])
+                            .map(function (_, i) {
                             var row = new Array(3);
                             row[0] = i.toString();
                             return row;
@@ -752,19 +745,19 @@ var CacheEmulator = /** @class */ (function () {
                         blockContainer.appendChild(leftTable.element);
                         blockContainer.appendChild(rightTable.element);
                         this._containers.outputTableContainer.appendChild(blockContainer);
-                        leftCache = new DummyCache(this._data.cacheLines / 2);
-                        rightCache = new DummyCache(this._data.cacheLines / 2);
+                        leftCache = new DummyCache(Math.pow(2, this._data.indexFieldBits) / 2);
+                        rightCache = new DummyCache(Math.pow(2, this._data.indexFieldBits) / 2);
                         globalCounter = 0;
                         i = 0, len = this._inputData.length;
                         _a.label = 1;
                     case 1:
                         if (!(i < len)) return [3 /*break*/, 5];
                         globalCounter++;
-                        slotNumber = this._inputData[i] % (this._data.cacheLines / 2);
+                        slotNumber = this._inputData[i] % (Math.pow(2, this._data.indexFieldBits) / 2);
                         output = [
                             "Sequence <b>#".concat(i + 1, "</b>: ").concat(this.parseString(this._inputData[i])),
                             "Global Counter: <b>".concat(globalCounter, "</b>"),
-                            "Slot # = ".concat(this.parseString(this._inputData[i]), " % ").concat(this._data.cacheLines / 2, " = ").concat(this.parseString(slotNumber)),
+                            "Slot # = ".concat(this.parseString(this._inputData[i]), " % ").concat(Math.pow(2, this._data.indexFieldBits) / 2, " = ").concat(this.parseString(slotNumber)),
                         ];
                         tableColumn = inputTable.getColumn(i);
                         tableColumn.forEach(function (_a) {
@@ -911,12 +904,18 @@ var CacheEmulator = /** @class */ (function () {
         });
     };
     CacheEmulator.prototype.showIntermediateOutput = function () {
-        var _a = this.getBitsInfo(), tag = _a.tag, index = _a.index, offset = _a.offset;
-        var totalBytes = this._data.cacheLines * this._data.wordsPerLine * this._data.bytesPerWord;
+        var index = this._data.indexFieldBits;
+        var offset = this._data.offsetFieldBits;
+        var tag = this._data.addressBusSize - index - offset;
+        var numLines = Math.pow(2, index);
+        var bytesPerLine = Math.pow(2, offset);
+        var wordsPerLine = bytesPerLine / this._data.bytesPerWord;
+        var totalBytes = numLines * bytesPerLine;
         var totalAsLog = Math.log2(totalBytes);
         var extraSizeInfo = Number.isInteger(totalAsLog) ? " (2<sup>".concat(totalAsLog, "</sup>)") : '';
         var output = [
             "Addresses to this cache have <b><span class=\"tagBits\">".concat(tag, "</span></b> bits for tag, <b><span class=\"indexBits\">").concat(index, "</span></b> bits for index, and <b><span class=\"offsetBits\">").concat(offset, "</span></b> bits for offset."),
+            "This means the cache has <b><span class=\"offsetBits\">".concat(bytesPerLine, "</span></b> offset values, <b><span class=\"indexBits\">").concat(numLines, "</span></b> index values, and <span class=\"offsetBits\"><b>").concat(wordsPerLine, "</b></span> words per line."),
             "This cache can store a total of <b>".concat(totalBytes, "</b>").concat(extraSizeInfo, " bytes."),
         ];
         this._containers.preOutput.innerHTML = output.join('<br />');
@@ -930,7 +929,8 @@ var CacheEmulator = /** @class */ (function () {
     };
     /** Parse a number into a binary string, spacing out nibbles. */
     CacheEmulator.prototype.parseToBinary = function (n) {
-        var _a = this.getBitsInfo(), offset = _a.offset, index = _a.index;
+        var index = this._data.indexFieldBits;
+        var offset = this._data.offsetFieldBits;
         var output = '<span class="tagBits">';
         var endOffset = this._data.addressBusSize - offset - 1;
         var endTag = endOffset - index;
@@ -1063,8 +1063,8 @@ var CacheEmulator = /** @class */ (function () {
     CacheEmulator._autoTimePeriod = 1000;
     CacheEmulator.Defaults = {
         addressBusSize: 20,
-        cacheLines: 32,
-        wordsPerLine: 16,
+        indexFieldBits: 5,
+        offsetFieldBits: 6,
         bytesPerWord: 4,
         hexMode: true,
         autoMode: false,
