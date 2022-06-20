@@ -11,3 +11,11 @@ td {
 td.selected {
     background-color: yellow;
 }
+
+td.doubleSelected {
+    background-color: orange;
+}
+
+.preOutput {
+    margin: 1em 0.5em;
+}

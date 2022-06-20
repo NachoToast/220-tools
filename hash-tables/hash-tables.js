@@ -43,7 +43,7 @@ var CollisionCounter = /** @class */ (function () {
     function CollisionCounter() {
     }
     CollisionCounter.toggleAutoStep = function (newValue) {
-        this.autoStep = newValue;
+        this._autoStep = newValue;
     };
     CollisionCounter.handleTableSizeChange = function (e) {
         var value = Number(e.target.value);
@@ -71,11 +71,11 @@ var CollisionCounter = /** @class */ (function () {
     CollisionCounter.clearTable = function () {
         this._tableElement.style.visibility = 'hidden';
         this._outputContainer.style.visibility = 'hidden';
-        this._indexesRow.innerHTML = "";
-        this._valuesRow.innerHTML = "";
-        this._mainOutput.innerHTML = "";
-        this._warnOutput.innerHTML = "";
-        this._totalOutput.innerHTML = "";
+        this._indexesRow.innerHTML = '';
+        this._valuesRow.innerHTML = '';
+        this._mainOutput.innerHTML = '';
+        this._warnOutput.innerHTML = '';
+        this._totalOutput.innerHTML = '';
     };
     CollisionCounter.displayTable = function (b) {
         return __awaiter(this, void 0, void 0, function () {
@@ -93,7 +93,7 @@ var CollisionCounter = /** @class */ (function () {
                             index = document.createElement('td');
                             index.innerText = "".concat(i);
                             value = document.createElement('td');
-                            value.innerHTML = "&nbsp;";
+                            value.innerHTML = '&nbsp;';
                             this._indexesRow.appendChild(index);
                             this._valuesRow.appendChild(value);
                         }
@@ -128,7 +128,7 @@ var CollisionCounter = /** @class */ (function () {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        isAuto = this.autoStep;
+                        isAuto = this._autoStep;
                         if (isAuto)
                             this._nextButton.style.visibility = 'hidden';
                         else
@@ -136,7 +136,7 @@ var CollisionCounter = /** @class */ (function () {
                         inputData = this._inputData;
                         hashMap = new Array(this._tableSize).fill(null);
                         globalCollisions = 0;
-                        this._totalOutput.innerText = "Total Collisions: 0";
+                        this._totalOutput.innerText = 'Total Collisions: 0';
                         i = 0, len = inputData.length;
                         _a.label = 1;
                     case 1:
@@ -167,7 +167,7 @@ var CollisionCounter = /** @class */ (function () {
                     case 5:
                         this._indexesRow.children[attemptedPosition].classList.add('collisionCounter_yes');
                         this._mainOutput.innerText = "Inserted ".concat(data, " at index ").concat(attemptedPosition, " (").concat(localCollisions, " collision").concat(localCollisions !== 1 ? 's' : '', ")");
-                        this._warnOutput.innerText = "";
+                        this._warnOutput.innerText = '';
                         hashMap[attemptedPosition] = data;
                         this._valuesRow.children[attemptedPosition].innerHTML = data.toString();
                         return [4 /*yield*/, this.wait(isAuto)];
@@ -195,11 +195,11 @@ var CollisionCounter = /** @class */ (function () {
         this._inputDataElement.oninput = function (e) { return _this.handleInputData(e); };
         this._hashFunctionElement.oninput = function (e) { return _this.handleFunctionChange(e); };
         // fake values
-        this._tableSizeElement.innerText = "20";
+        this._tableSizeElement.innerText = '20';
         this._tableSize = 20;
-        this._inputDataElement.innerText = "6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36";
-        this._inputData = "6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36".split(' ').map(function (e) { return Number(e); });
-        this._hashFunctionElement.innerText = "(x) => x % 20";
+        this._inputDataElement.innerText = '6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36';
+        this._inputData = '6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36'.split(' ').map(function (e) { return Number(e); });
+        this._hashFunctionElement.innerText = '(x) => x % 20';
         this._hashFunction = function (x) { return x % 20; };
     };
     CollisionCounter._tableSizeElement = document.getElementById('collisionCounterTableSize');
@@ -216,7 +216,7 @@ var CollisionCounter = /** @class */ (function () {
     CollisionCounter._inputData = [];
     // TODO: other collision handling methods (quadratic, double hashing, etc...)
     CollisionCounter._collisionHandling = CollisionHandling.Linear;
-    CollisionCounter.autoStep = true;
+    CollisionCounter._autoStep = true;
     CollisionCounter._nextButton = document.getElementById('collisionCounterNext');
     return CollisionCounter;
 }());

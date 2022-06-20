@@ -8,7 +8,7 @@
     "scripts": {
         "build": "tsc",
         "dev": "nodemon",
-        "lint": "eslint --ext .ts --max-warnings=0",
+        "lint": "eslint \"**/*.ts\" --max-warnings=0",
         "typecheck": "tsc --noEmit",
         "check-all": "yarn lint && yarn typecheck"
     },

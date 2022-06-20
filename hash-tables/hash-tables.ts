@@ -8,6 +8,7 @@ abstract class CollisionCounter {
     private static _hashFunctionElement = document.getElementById(
         'collisionCounterHashFunction',
     )! as HTMLTextAreaElement;
+
     private static _tableElement = document.getElementById('collisionCounterTable')!;
     private static _indexesRow = document.getElementById('collisionCounterTable_indexes')!;
     private static _valuesRow = document.getElementById('collisionCounterTable_values')!;
@@ -24,11 +25,11 @@ abstract class CollisionCounter {
     private static _collisionHandling: CollisionHandling = CollisionHandling.Linear;
     private static _hashFunction: (x: number) => number;
 
-    private static autoStep: boolean = true;
+    private static _autoStep = true;
     private static _nextButton = document.getElementById('collisionCounterNext')!;
 
     public static toggleAutoStep(newValue: boolean): void {
-        this.autoStep = newValue;
+        this._autoStep = newValue;
     }
 
     private static handleTableSizeChange(e: Event): void {
@@ -61,12 +62,12 @@ abstract class CollisionCounter {
         this._tableElement.style.visibility = 'hidden';
         this._outputContainer.style.visibility = 'hidden';
 
-        this._indexesRow.innerHTML = ``;
-        this._valuesRow.innerHTML = ``;
+        this._indexesRow.innerHTML = '';
+        this._valuesRow.innerHTML = '';
 
-        this._mainOutput.innerHTML = ``;
-        this._warnOutput.innerHTML = ``;
-        this._totalOutput.innerHTML = ``;
+        this._mainOutput.innerHTML = '';
+        this._warnOutput.innerHTML = '';
+        this._totalOutput.innerHTML = '';
     }
 
     public static async displayTable(b: HTMLButtonElement): Promise<void> {
@@ -82,7 +83,7 @@ abstract class CollisionCounter {
             index.innerText = `${i}`;
 
             const value = document.createElement('td');
-            value.innerHTML = `&nbsp;`;
+            value.innerHTML = '&nbsp;';
 
             this._indexesRow.appendChild(index);
             this._valuesRow.appendChild(value);
@@ -108,7 +109,7 @@ abstract class CollisionCounter {
     }
 
     private static async insertAll(): Promise<void> {
-        const isAuto = this.autoStep;
+        const isAuto = this._autoStep;
         if (isAuto) this._nextButton.style.visibility = 'hidden';
         else this._nextButton.style.visibility = 'visible';
 
@@ -116,7 +117,7 @@ abstract class CollisionCounter {
         const hashMap: (number | null)[] = new Array(this._tableSize).fill(null);
         let globalCollisions = 0;
 
-        this._totalOutput.innerText = `Total Collisions: 0`;
+        this._totalOutput.innerText = 'Total Collisions: 0';
 
         for (let i = 0, len = inputData.length; i < len; i++) {
             const data = inputData[i];
@@ -142,7 +143,7 @@ abstract class CollisionCounter {
             this._mainOutput.innerText = `Inserted ${data} at index ${attemptedPosition} (${localCollisions} collision${
                 localCollisions !== 1 ? 's' : ''
             })`;
-            this._warnOutput.innerText = ``;
+            this._warnOutput.innerText = '';
             hashMap[attemptedPosition] = data;
             this._valuesRow.children[attemptedPosition].innerHTML = data.toString();
             await this.wait(isAuto);
@@ -163,13 +164,13 @@ abstract class CollisionCounter {
         this._hashFunctionElement.oninput = (e) => this.handleFunctionChange(e);
 
         // fake values
-        this._tableSizeElement.innerText = `20`;
+        this._tableSizeElement.innerText = '20';
         this._tableSize = 20;
 
-        this._inputDataElement.innerText = `6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36`;
-        this._inputData = `6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36`.split(' ').map((e) => Number(e));
+        this._inputDataElement.innerText = '6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36';
+        this._inputData = '6 7 8 12 13 20 34 50 17 16 31 32 4 44 52 36'.split(' ').map((e) => Number(e));
 
-        this._hashFunctionElement.innerText = `(x) => x % 20`;
+        this._hashFunctionElement.innerText = '(x) => x % 20';
         this._hashFunction = (x) => x % 20;
     }
 }
