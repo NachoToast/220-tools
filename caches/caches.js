@@ -35,15 +35,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
-};
 var Table = /** @class */ (function () {
     function Table(data, headerRow, verticalHeaderRow) {
         this.element = document.createElement('table');
@@ -146,494 +137,12 @@ var DummyCache = /** @class */ (function () {
     };
     return DummyCache;
 }());
-var OldCacheTypes;
-(function (OldCacheTypes) {
-    OldCacheTypes["FulllyAssociative"] = "fullyAssociative";
-    OldCacheTypes["DirectMapped"] = "directMapped";
-    OldCacheTypes["SetAssociative"] = "setAssociative";
-})(OldCacheTypes || (OldCacheTypes = {}));
-var LRUReplacement = /** @class */ (function () {
-    function LRUReplacement() {
-    }
-    Object.defineProperty(LRUReplacement, "cacheSize", {
-        set: function (n) {
-            if (this._inProgress)
-                return;
-            this._cacheSize = n;
-        },
-        enumerable: false,
-        configurable: true
-    });
-    LRUReplacement.setHexMode = function (m) {
-        if (this._inProgress)
-            return;
-        this._hexMode = m;
-        this._hexModeToggler.checked = m;
-        this.reDrawInputTable();
-    };
-    LRUReplacement.setAutoMode = function (m) {
-        if (this._inProgress)
-            return;
-        this._autoMode = m;
-        this._autoModeToggler.checked = m;
-    };
-    LRUReplacement.setCacheType = function (m) {
-        if (this._inProgress)
-            return;
-        this._cacheType = m;
-        this._cacheTypeSelect.value = m;
-    };
-    LRUReplacement.inputData = function (d) {
-        if (this._inProgress)
-            return;
-        this._inputData = d
-            .split(/\s|,/g)
-            .filter(function (e) { return !!e; })
-            .map(function (e) { return Number(e); })
-            .filter(function (e) { return !Number.isNaN(e); });
-        this.reDrawInputTable();
-    };
-    LRUReplacement.reDrawInputTable = function () {
-        var _this = this;
-        this._inputTableContainer.innerHTML = '';
-        if (!this._inputData.length)
-            return;
-        var tableData = new Array(3);
-        tableData[0] = new Array(this._inputData.length).fill('').map(function (_, i) { return (i + 1).toString(); }); // sequence id
-        tableData[1] = this._inputData.map(function (e) { return _this.dataToString(e); }); // address
-        tableData[2] = new Array(this._inputData.length); // hit/miss (i guess they never miss huh?)
-        this._table = new Table(tableData, ['Sequence #', 'Address', 'Hit/Miss'], true);
-        this._inputTableContainer.appendChild(this._table.element);
-    };
-    LRUReplacement.dataToString = function (d) {
-        if (this._hexMode)
-            return "0x".concat(d.toString(16).padStart(2, '0').toUpperCase());
-        return d.toString();
-    };
-    LRUReplacement.wait = function (ms) {
-        var _this = this;
-        if (ms === void 0) { ms = 1000; }
-        if (this._autoMode) {
-            return new Promise(function (resolve) {
-                setTimeout(resolve, ms);
-            });
-        }
-        return new Promise(function (resolve) {
-            _this._nextButton.onclick = function () {
-                _this._nextButton.onclick = null;
-                resolve();
-            };
-        });
-    };
-    LRUReplacement.start = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var _a;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        if (!this._table || !this._inputData.length || !this._table || this._inProgress)
-                            return [2 /*return*/];
-                        this._inProgress = true;
-                        _a = this._cacheType;
-                        switch (_a) {
-                            case OldCacheTypes.FulllyAssociative: return [3 /*break*/, 1];
-                            case OldCacheTypes.DirectMapped: return [3 /*break*/, 3];
-                            case OldCacheTypes.SetAssociative: return [3 /*break*/, 5];
-                        }
-                        return [3 /*break*/, 7];
-                    case 1: return [4 /*yield*/, this.startFullyAssociative()];
-                    case 2:
-                        _b.sent();
-                        return [3 /*break*/, 7];
-                    case 3: return [4 /*yield*/, this.startDirectMapped()];
-                    case 4:
-                        _b.sent();
-                        return [3 /*break*/, 7];
-                    case 5: return [4 /*yield*/, this.startSetAssociative()];
-                    case 6:
-                        _b.sent();
-                        return [3 /*break*/, 7];
-                    case 7:
-                        this._inProgress = false;
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
-    LRUReplacement.startFullyAssociative = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var tableData, cacheTable, globalCounter, globalCounterElement, statusElement, cache, _loop_1, this_1, i, len;
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        this._table = this._table;
-                        tableData = new Array(this._cacheSize).fill([]).map(function (_, i) {
-                            var row = new Array(3);
-                            row[0] = i.toString();
-                            return row;
-                        });
-                        cacheTable = new Table(tableData, ['Line #', 'Address', 'Local Counter']);
-                        cacheTable.element.style.width = '50%';
-                        this._outputContainer.appendChild(cacheTable.element);
-                        globalCounter = 0;
-                        globalCounterElement = document.createElement('p');
-                        this._outputContainer.appendChild(globalCounterElement);
-                        statusElement = document.createElement('p');
-                        this._outputContainer.appendChild(statusElement);
-                        cache = new DummyCache(this._cacheSize);
-                        _loop_1 = function (i, len) {
-                            var tableColumn, index, addedIndex, localCounters, indexOfLowest, removedItem;
-                            return __generator(this, function (_b) {
-                                switch (_b.label) {
-                                    case 0:
-                                        statusElement.innerText = "Sequence #".concat(i + 1);
-                                        globalCounter++;
-                                        globalCounterElement.innerText = "Global Counter: ".concat(globalCounter.toString());
-                                        tableColumn = this_1._table.getColumn(i);
-                                        tableColumn.forEach(function (_a) {
-                                            var classList = _a.element.classList;
-                                            return classList.add('selected');
-                                        });
-                                        index = cache.data.findIndex(function (e) { return (e === null || e === void 0 ? void 0 : e.address) === _this._inputData[i]; });
-                                        if (index !== -1) {
-                                            // hit
-                                            cache.setItemAt(index, { address: this_1._inputData[i], localCounter: globalCounter });
-                                            this_1._table.getCellAt(2, i).setValue('H');
-                                            cacheTable.getCellAt(index, 2).setValue(globalCounter.toString());
-                                            statusElement.innerText += '\nCache hit, incremented local counter.';
-                                        }
-                                        else if (!cache.isFull()) {
-                                            addedIndex = cache.getFirstFreeSlot();
-                                            cache.setItemAt(addedIndex, { address: this_1._inputData[i], localCounter: globalCounter });
-                                            this_1._table.getCellAt(2, i).setValue('M');
-                                            cacheTable.getCellAt(addedIndex, 1).setValue(this_1.dataToString(this_1._inputData[i]));
-                                            cacheTable.getCellAt(addedIndex, 2).setValue(globalCounter.toString());
-                                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(addedIndex, ".");
-                                        }
-                                        else {
-                                            localCounters = cache.data.map(function (e) { return e.localCounter; });
-                                            indexOfLowest = localCounters.indexOf(Math.min.apply(Math, localCounters));
-                                            removedItem = cache.getItemAt(indexOfLowest);
-                                            cache.setItemAt(indexOfLowest, { address: this_1._inputData[i], localCounter: globalCounter });
-                                            this_1._table.getCellAt(2, i).setValue('M');
-                                            cacheTable.getCellAt(indexOfLowest, 1).setValue(this_1.dataToString(this_1._inputData[i]));
-                                            cacheTable.getCellAt(indexOfLowest, 2).setValue(globalCounter.toString());
-                                            statusElement.innerText = "\nCapacity miss, removed ".concat(this_1.dataToString(removedItem.address), " from line 0 (had lowest local counter, ").concat(removedItem.localCounter, ").");
-                                        }
-                                        return [4 /*yield*/, this_1.wait()];
-                                    case 1:
-                                        _b.sent();
-                                        tableColumn.forEach(function (_a) {
-                                            var classList = _a.element.classList;
-                                            return classList.remove('selected');
-                                        });
-                                        return [2 /*return*/];
-                                }
-                            });
-                        };
-                        this_1 = this;
-                        i = 0, len = this._inputData.length;
-                        _a.label = 1;
-                    case 1:
-                        if (!(i < len)) return [3 /*break*/, 4];
-                        return [5 /*yield**/, _loop_1(i, len)];
-                    case 2:
-                        _a.sent();
-                        _a.label = 3;
-                    case 3:
-                        i++;
-                        return [3 /*break*/, 1];
-                    case 4:
-                        statusElement.innerText = 'Done!';
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
-    LRUReplacement.startDirectMapped = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var tableData, cacheTable, statusElement, cache, slotFunction, i, len, tableColumn, slotNumber, existing;
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        this._table = this._table;
-                        tableData = new Array(this._cacheSize).fill([]).map(function (_, i) {
-                            var row = new Array(2);
-                            row[0] = i.toString();
-                            return row;
-                        });
-                        cacheTable = new Table(tableData, ['Line #', 'Address']);
-                        cacheTable.element.style.width = '50%';
-                        this._outputContainer.appendChild(cacheTable.element);
-                        statusElement = document.createElement('p');
-                        this._outputContainer.appendChild(statusElement);
-                        cache = new DummyCache(this._cacheSize);
-                        slotFunction = function (address) { return address % _this._cacheSize; };
-                        i = 0, len = this._inputData.length;
-                        _a.label = 1;
-                    case 1:
-                        if (!(i < len)) return [3 /*break*/, 4];
-                        statusElement.innerText = "Sequence #".concat(i + 1);
-                        tableColumn = this._table.getColumn(i);
-                        tableColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.add('selected');
-                        });
-                        slotNumber = slotFunction(this._inputData[i]);
-                        existing = cache.getItemAt(slotNumber);
-                        if (existing !== null && existing === this._inputData[i]) {
-                            // hit
-                            this._table.getCellAt(2, i).setValue('H');
-                            statusElement.innerText += '\nCache hit.';
-                        }
-                        else if (existing === null) {
-                            // compulsory miss
-                            cache.setItemAt(slotNumber, this._inputData[i]);
-                            this._table.getCellAt(2, i).setValue('M');
-                            cacheTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
-                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(slotNumber, ".");
-                        }
-                        else {
-                            // conflict miss
-                            // we don't get capacity misses on direct-mapped caches
-                            cache.setItemAt(slotNumber, this._inputData[i]);
-                            this._table.getCellAt(2, i).setValue('M');
-                            cacheTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
-                            statusElement.innerText = "\nConflict miss, replaced ".concat(this.dataToString(existing), " with ").concat(this.dataToString(this._inputData[i]), " (line ").concat(slotNumber, ").");
-                        }
-                        return [4 /*yield*/, this.wait()];
-                    case 2:
-                        _a.sent();
-                        tableColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.remove('selected');
-                        });
-                        _a.label = 3;
-                    case 3:
-                        i++;
-                        return [3 /*break*/, 1];
-                    case 4:
-                        statusElement.innerText = 'Done!';
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
-    LRUReplacement.startSetAssociative = function () {
-        return __awaiter(this, void 0, void 0, function () {
-            var leftTableData, rightTableData, leftTable, rightTable, blockContainer, globalCounter, globalCounterElement, statusElement, leftCache, rightCache, slotFunction, i, len, tableColumn, slotNumber, existingA, existingB;
-            var _this = this;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        if (this._cacheSize % 2 !== 0) {
-                            window.alert('Cache size must be even for 2-way set associative caching.');
-                            return [2 /*return*/];
-                        }
-                        this._table = this._table;
-                        leftTableData = new Array(this._cacheSize / 2).fill([]).map(function (_, i) {
-                            var row = new Array(3);
-                            row[0] = i.toString();
-                            return row;
-                        });
-                        rightTableData = new Array(this._cacheSize / 2).fill([]).map(function (_, i) {
-                            var row = new Array(3);
-                            row[0] = i.toString();
-                            return row;
-                        });
-                        leftTable = new Table(leftTableData, ['Line #', 'Address', 'Local Counter']);
-                        rightTable = new Table(rightTableData, ['Line #', 'Address', 'Local Counter']);
-                        leftTable.element.style.width = '40%';
-                        rightTable.element.style.width = '40%';
-                        blockContainer = document.createElement('div');
-                        blockContainer.style.display = 'flex';
-                        blockContainer.style.justifyContent = 'space-evenly';
-                        blockContainer.appendChild(leftTable.element);
-                        blockContainer.appendChild(rightTable.element);
-                        this._outputContainer.appendChild(blockContainer);
-                        globalCounter = 0;
-                        globalCounterElement = document.createElement('p');
-                        this._outputContainer.appendChild(globalCounterElement);
-                        statusElement = document.createElement('p');
-                        this._outputContainer.appendChild(statusElement);
-                        leftCache = new DummyCache(this._cacheSize / 2);
-                        rightCache = new DummyCache(this._cacheSize / 2);
-                        slotFunction = function (address) { return address % (_this._cacheSize / 2); };
-                        i = 0, len = this._inputData.length;
-                        _a.label = 1;
-                    case 1:
-                        if (!(i < len)) return [3 /*break*/, 4];
-                        statusElement.innerText = "Sequence #".concat(i + 1);
-                        globalCounter++;
-                        tableColumn = this._table.getColumn(i);
-                        tableColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.add('selected');
-                        });
-                        slotNumber = slotFunction(this._inputData[i]);
-                        existingA = leftCache.getItemAt(slotNumber);
-                        existingB = rightCache.getItemAt(slotNumber);
-                        if ((existingA === null || existingA === void 0 ? void 0 : existingA.address) === this._inputData[i]) {
-                            // hit A
-                            leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
-                            this._table.getCellAt(2, i).setValue('H');
-                            leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
-                            statusElement.innerText += '\nCache hit (set 0), incremented local counter';
-                        }
-                        else if ((existingB === null || existingB === void 0 ? void 0 : existingB.address) === this._inputData[i]) {
-                            // hit B
-                            rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
-                            this._table.getCellAt(2, i).setValue('H');
-                            rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
-                            statusElement.innerText += '\nCache hit (set 1), incremented local counter';
-                        }
-                        else if (existingA === null) {
-                            // compulsory miss primary
-                            leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
-                            this._table.getCellAt(2, i).setValue('M');
-                            leftTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
-                            leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
-                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(slotNumber, " (set 0).");
-                        }
-                        else if (existingB === null) {
-                            // compulsory miss fallback
-                            rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
-                            this._table.getCellAt(2, i).setValue('M');
-                            rightTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
-                            rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
-                            statusElement.innerText += "\nCompulsory miss, added new address to line ".concat(slotNumber, " (set 1).");
-                        }
-                        else {
-                            // conflict miss
-                            // we don't get capacity misses on set associative caches
-                            this._table.getCellAt(2, i).setValue('M');
-                            if (existingA.localCounter < existingB.localCounter) {
-                                // remove A
-                                leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
-                                leftTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
-                                leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
-                                statusElement.innerText += "\nConflict miss, replaced ".concat(this.dataToString(existingA.address), " with ").concat(this.dataToString(this._inputData[i]), " (set 0, line ").concat(slotNumber, ")");
-                            }
-                            else {
-                                // remove B
-                                rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
-                                rightTable.getCellAt(slotNumber, 1).setValue(this.dataToString(this._inputData[i]));
-                                rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
-                                statusElement.innerText += "\nConflict miss, replaced ".concat(this.dataToString(existingB.address), " with ").concat(this.dataToString(this._inputData[i]), " (set 1, line ").concat(slotNumber, ")");
-                            }
-                        }
-                        return [4 /*yield*/, this.wait()];
-                    case 2:
-                        _a.sent();
-                        tableColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.remove('selected');
-                        });
-                        _a.label = 3;
-                    case 3:
-                        i++;
-                        return [3 /*break*/, 1];
-                    case 4: return [2 /*return*/];
-                }
-            });
-        });
-    };
-    LRUReplacement.loadSampleData = function () {
-        if (this._inProgress)
-            return;
-        var inputData = '0x23  0x13  0x17  0x13  0x1F  0x23  0x19  0x13  0x17  0x1F  0x23  0x13';
-        document.getElementById('LRUReplacementCacheSize').value = '4';
-        LRUReplacement.cacheSize = 4;
-        document.getElementById('LRUReplacementInputData').value = inputData;
-        LRUReplacement.inputData(inputData);
-        LRUReplacement.setHexMode(true);
-        LRUReplacement.setCacheType(OldCacheTypes.FulllyAssociative);
-    };
-    LRUReplacement.loadDirectSampleData = function () {
-        if (this._inProgress)
-            return;
-        var inputData = '8 8 7 3 7 3 7 3';
-        document.getElementById('LRUReplacementCacheSize').value = '4';
-        LRUReplacement.cacheSize = 4;
-        document.getElementById('LRUReplacementInputData').value = inputData;
-        LRUReplacement.inputData(inputData);
-        LRUReplacement.setHexMode(false);
-        LRUReplacement.setCacheType(OldCacheTypes.DirectMapped);
-    };
-    LRUReplacement.loadSetAssociativeSampleData1 = function () {
-        if (this._inProgress)
-            return;
-        var inputData = '3 7 5 9 3 7 5 9';
-        document.getElementById('LRUReplacementCacheSize').value = '4';
-        LRUReplacement.cacheSize = 4;
-        document.getElementById('LRUReplacementInputData').value = inputData;
-        LRUReplacement.inputData(inputData);
-        LRUReplacement.setHexMode(false);
-        LRUReplacement.setCacheType(OldCacheTypes.SetAssociative);
-    };
-    LRUReplacement.loadSetAssociativeSampleData2 = function () {
-        if (this._inProgress)
-            return;
-        var inputData = '8 8 7 3 7 3 7 3';
-        document.getElementById('LRUReplacementCacheSize').value = '4';
-        LRUReplacement.cacheSize = 4;
-        document.getElementById('LRUReplacementInputData').value = inputData;
-        LRUReplacement.inputData(inputData);
-        LRUReplacement.setHexMode(false);
-        LRUReplacement.setCacheType(OldCacheTypes.SetAssociative);
-    };
-    Object.defineProperty(LRUReplacement, "_inProgress", {
-        get: function () {
-            return this.__inProgress;
-        },
-        set: function (b) {
-            this.__inProgress = b;
-            if (b)
-                this._outputContainer.innerHTML = '';
-            if (!this._autoMode)
-                this._nextButton.style.visibility = b ? 'visible' : 'hidden';
-            this._goButton.disabled = b;
-            this._hexModeToggler.disabled = b;
-            this._autoModeToggler.disabled = b;
-            this._cacheTypeSelect.disabled = b;
-            this._inputElements.forEach(function (e) { return (e.disabled = b); });
-            if (b && this._table) {
-                this._table.getRow(2).cells.forEach(function (cell) { return cell.setValue(''); });
-            }
-        },
-        enumerable: false,
-        configurable: true
-    });
-    LRUReplacement._cacheSize = 4;
-    LRUReplacement._inputData = [];
-    LRUReplacement._hexMode = false;
-    LRUReplacement._autoMode = true;
-    LRUReplacement._cacheType = OldCacheTypes.FulllyAssociative;
-    // table containers
-    LRUReplacement._inputTableContainer = document.getElementById('LRUReplacementInputTableContainer');
-    // mode togglers
-    LRUReplacement._hexModeToggler = document.getElementById('LRUReplacementShowHexNumbers');
-    LRUReplacement._autoModeToggler = document.getElementById('LRUReplacementAutoMode');
-    // other IO
-    LRUReplacement._goButton = document.getElementById('LRUReplacementGoButton');
-    LRUReplacement._outputContainer = document.getElementById('LRUReplacementOutputContainer');
-    LRUReplacement._nextButton = document.getElementById('LRUReplacementNextButton');
-    LRUReplacement._cacheTypeSelect = document.getElementById('LRUReplacementCacheTypeSelect');
-    LRUReplacement._inputElements = [
-        document.getElementById('LRUReplacementCacheSize'),
-        document.getElementById('LRUReplacementInputData'),
-    ];
-    LRUReplacement.__inProgress = false;
-    return LRUReplacement;
-}());
-new LRUReplacement();
 var CacheTypes;
 (function (CacheTypes) {
     CacheTypes[CacheTypes["DirectMapped"] = 0] = "DirectMapped";
-    CacheTypes[CacheTypes["FullyAssociative"] = 1] = "FullyAssociative";
-    CacheTypes[CacheTypes["SetAssociative"] = 2] = "SetAssociative";
+    CacheTypes[CacheTypes["DirectMappedSimple"] = 1] = "DirectMappedSimple";
+    CacheTypes[CacheTypes["FullyAssociative"] = 2] = "FullyAssociative";
+    CacheTypes[CacheTypes["SetAssociative"] = 3] = "SetAssociative";
 })(CacheTypes || (CacheTypes = {}));
 var CacheEmulator = /** @class */ (function () {
     function CacheEmulator() {
@@ -666,18 +175,24 @@ var CacheEmulator = /** @class */ (function () {
             }),
             cacheLines: this.createInputElement({
                 label: 'Number of cache lines: ',
+                title: 'This changes index bits required',
                 type: 'number',
+                classes: ['indexBits'],
                 parent: this._containers.inputContainer1,
                 onInput: this.setCacheLines,
             }),
             wordsPerLine: this.createInputElement({
                 label: 'Words per line: ',
+                classes: ['offsetBits'],
+                title: 'This changes offset bits required',
                 type: 'number',
                 parent: this._containers.inputContainer1,
                 onInput: this.setWordsPerLine,
             }),
             bytesPerWord: this.createInputElement({
                 label: 'Bytes per word: ',
+                classes: ['offsetBits'],
+                title: 'This changes offset bits required',
                 type: 'number',
                 parent: this._containers.inputContainer1,
                 onInput: this.setBytesPerWord,
@@ -696,12 +211,6 @@ var CacheEmulator = /** @class */ (function () {
                 title: 'Will automatically go through all insertions',
                 onInput: this.setAutoMode,
             }),
-            disableSpatialLocality: this.createInputElement({
-                label: 'Disable spatial locality',
-                type: 'checkbox',
-                parent: this._containers.inputContainer2,
-                onInput: this.setDisableSpatialLocality,
-            }),
             inputData: this.createInputElement({
                 label: 'Input data: ',
                 parent: this._containers.inputContainer3,
@@ -713,16 +222,27 @@ var CacheEmulator = /** @class */ (function () {
                 onInput: this.handleCacheType,
                 options: [
                     { text: 'Direct Mapped', value: CacheTypes.DirectMapped },
+                    { text: 'Direct Mapped (No Spatial Locality)', value: CacheTypes.DirectMappedSimple },
                     { text: 'Fully Associative', value: CacheTypes.FullyAssociative },
-                    { text: 'Set Associative', value: CacheTypes.SetAssociative },
+                    { text: '2-Way Set Associative', value: CacheTypes.SetAssociative },
                 ],
             }),
         };
         this._data = this.loadValues();
         this._inputData = [];
         var title = document.createElement('h2');
-        title.innerText = 'Cache Emulation';
+        title.style.marginBottom = '0';
+        title.innerText = 'Cache Emulator';
         this._container.appendChild(title);
+        var subtitle = document.createElement('a');
+        subtitle.style.marginTop = '0';
+        subtitle.style.display = 'inline-block';
+        subtitle.href = 'https://github.com/NachoToast';
+        subtitle.rel = 'noreferrer';
+        subtitle.target = '_blank';
+        subtitle.style.marginBottom = '1em';
+        subtitle.innerHTML = '<i>By NachoToast</i>';
+        this._container.appendChild(subtitle);
         Object.values(this._containers).forEach(function (e) {
             _this._container.appendChild(e);
         });
@@ -732,9 +252,17 @@ var CacheEmulator = /** @class */ (function () {
         this._containers.goButton.style.padding = '0.2em 1em';
         this._containers.goButton.style.cursor = 'pointer';
         this._containers.goButton.innerText = 'Go';
+        this._containers.outputTableContainer.classList.add('tableContainer');
         this.showIntermediateOutput();
         this.handleInputData();
     }
+    CacheEmulator.prototype.getBitsInfo = function () {
+        var bytesPerLine = this._data.bytesPerWord * this._data.wordsPerLine;
+        var index = Math.ceil(Math.log2(this._data.cacheLines || 1));
+        var offset = Math.ceil(Math.log2(bytesPerLine || 1));
+        var tag = this._data.addressBusSize - index - offset;
+        return { tag: tag, index: index, offset: offset, bytesPerLine: bytesPerLine };
+    };
     CacheEmulator.prototype.setAddressBusSize = function () {
         var _a;
         var minAddressSize = Math.ceil(Math.log2(this._data.cacheLines)) + Math.ceil(Math.log2(this._data.wordsPerLine));
@@ -771,11 +299,6 @@ var CacheEmulator = /** @class */ (function () {
         this._inputElements.autoMode = this._inputElements.autoMode;
         this._data.autoMode = this._inputElements.autoMode.checked;
         this._inputElements.autoMode.checked = this._data.autoMode;
-    };
-    CacheEmulator.prototype.setDisableSpatialLocality = function () {
-        this._inputElements.disableSpatialLocality = this._inputElements.disableSpatialLocality;
-        this._data.disableSpatialLocality = this._inputElements.disableSpatialLocality.checked;
-        this._inputElements.disableSpatialLocality.checked = this._data.disableSpatialLocality;
     };
     CacheEmulator.prototype.handleInputData = function () {
         this._data.inputData = this._inputElements.inputData.value;
@@ -829,21 +352,27 @@ var CacheEmulator = /** @class */ (function () {
                             case CacheTypes.DirectMapped: return [3 /*break*/, 1];
                             case CacheTypes.FullyAssociative: return [3 /*break*/, 3];
                             case CacheTypes.SetAssociative: return [3 /*break*/, 5];
+                            case CacheTypes.DirectMappedSimple: return [3 /*break*/, 7];
                         }
-                        return [3 /*break*/, 7];
+                        return [3 /*break*/, 9];
                     case 1: return [4 /*yield*/, this.doDirectMapped(inputTable)];
                     case 2:
                         _b.sent();
-                        return [3 /*break*/, 7];
+                        return [3 /*break*/, 10];
                     case 3: return [4 /*yield*/, this.doFullyAssociative(inputTable)];
                     case 4:
                         _b.sent();
-                        return [3 /*break*/, 7];
+                        return [3 /*break*/, 10];
                     case 5: return [4 /*yield*/, this.doSetAssociative(inputTable)];
                     case 6:
                         _b.sent();
-                        return [3 /*break*/, 7];
-                    case 7:
+                        return [3 /*break*/, 10];
+                    case 7: return [4 /*yield*/, this.doDirectMappedSimple(inputTable)];
+                    case 8:
+                        _b.sent();
+                        return [3 /*break*/, 10];
+                    case 9: throw new Error("Unexpected cache type: ".concat(this._data.cacheType));
+                    case 10:
                         if (this._data.autoMode) {
                             this._containers.goButton.style.visibility = 'visible';
                         }
@@ -859,142 +388,518 @@ var CacheEmulator = /** @class */ (function () {
     };
     CacheEmulator.prototype.doFullyAssociative = function (inputTable) {
         return __awaiter(this, void 0, void 0, function () {
+            var tableData, cacheTable, cache, globalCounter, _loop_1, this_1, i, len;
+            var _this = this;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        console.log('doing FullyAssociative');
-                        return [4 /*yield*/, new Promise(function (res) { return setTimeout(res, 1000); })];
+                        tableData = new Array(this._data.cacheLines).fill([]).map(function (_, i) {
+                            var row = new Array(3);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        cacheTable = new Table(tableData, ['Line #', 'Address', 'Local Counter']);
+                        this._containers.outputTableContainer.appendChild(cacheTable.element);
+                        cache = new DummyCache(this._data.cacheLines);
+                        globalCounter = 0;
+                        _loop_1 = function (i, len) {
+                            var output, tableColumn, cellsModified, index, addedIndex, allLocalCounters, indexOfLowest, removedItem;
+                            return __generator(this, function (_b) {
+                                switch (_b.label) {
+                                    case 0:
+                                        globalCounter++;
+                                        output = [
+                                            "Sequence <b>#".concat(i + 1, "</b>: ").concat(this_1.parseString(this_1._inputData[i])),
+                                            "Global Counter: <b>".concat(globalCounter, "</b>"),
+                                            "Searching all lines for ".concat(this_1.parseString(this_1._inputData[i])),
+                                        ];
+                                        tableColumn = inputTable.getColumn(i);
+                                        tableColumn.forEach(function (_a) {
+                                            var classList = _a.element.classList;
+                                            return classList.add('selected');
+                                        });
+                                        this_1._containers.outputDetailsContainer.innerHTML = output.join('<br />');
+                                        return [4 /*yield*/, this_1.wait()];
+                                    case 1:
+                                        _b.sent();
+                                        output.pop();
+                                        cellsModified = void 0;
+                                        index = cache.data.findIndex(function (e) { return (e === null || e === void 0 ? void 0 : e.address) === _this._inputData[i]; });
+                                        if (index !== -1) {
+                                            // hit
+                                            inputTable.getCellAt(2, i).setValue('H');
+                                            cache.setItemAt(index, { address: this_1._inputData[i], localCounter: globalCounter });
+                                            cacheTable
+                                                .getRow(index)
+                                                .cells.forEach(function (_a) {
+                                                var classList = _a.element.classList;
+                                                return classList.add('selected', 'good');
+                                            });
+                                            cellsModified = cacheTable.getRow(index).cells;
+                                            cacheTable.getRow(index).element.scrollIntoView({ behavior: 'smooth' });
+                                            cacheTable.getCellAt(index, 2).setValue(globalCounter.toString());
+                                            output.push('<i>Hit, updated local counter</i>');
+                                        }
+                                        else if (!cache.isFull()) {
+                                            // compulsory miss
+                                            inputTable.getCellAt(2, i).setValue('M');
+                                            addedIndex = cache.getFirstFreeSlot();
+                                            cache.setItemAt(addedIndex, { address: this_1._inputData[i], localCounter: globalCounter });
+                                            cacheTable.getCellAt(addedIndex, 1).setValue(this_1.parseString(this_1._inputData[i]));
+                                            cacheTable.getCellAt(addedIndex, 2).setValue(globalCounter.toString());
+                                            cacheTable
+                                                .getRow(addedIndex)
+                                                .cells.forEach(function (_a) {
+                                                var classList = _a.element.classList;
+                                                return classList.add('selected', 'neutral');
+                                            });
+                                            cellsModified = cacheTable.getRow(addedIndex).cells;
+                                            cacheTable.getRow(addedIndex).element.scrollIntoView({ behavior: 'smooth' });
+                                            output.push("<i>Compulsory miss, added new address to line ".concat(addedIndex, "</i>"));
+                                        }
+                                        else {
+                                            // capacity miss
+                                            // we don't get conflicy misses on fully-associative caches
+                                            inputTable.getCellAt(2, i).setValue('M');
+                                            allLocalCounters = cache.data.map(function (e) { var _a; return (_a = e === null || e === void 0 ? void 0 : e.localCounter) !== null && _a !== void 0 ? _a : Infinity; });
+                                            indexOfLowest = allLocalCounters.indexOf(Math.min.apply(Math, allLocalCounters));
+                                            removedItem = cache.getItemAt(indexOfLowest);
+                                            cache.setItemAt(indexOfLowest, { address: this_1._inputData[i], localCounter: globalCounter });
+                                            cacheTable.getCellAt(indexOfLowest, 1).setValue(this_1.parseString(this_1._inputData[i]));
+                                            cacheTable.getRow(indexOfLowest).element.scrollIntoView({ behavior: 'smooth' });
+                                            cacheTable
+                                                .getRow(indexOfLowest)
+                                                .cells.forEach(function (_a) {
+                                                var classList = _a.element.classList;
+                                                return classList.add('selected', 'bad');
+                                            });
+                                            cellsModified = cacheTable.getRow(indexOfLowest).cells;
+                                            cacheTable.getCellAt(indexOfLowest, 2).setValue(globalCounter.toString());
+                                            output.push("<i>Capacity miss, removed ".concat(this_1.parseString(removedItem.address), " (had lowest local counter, ").concat(removedItem.localCounter, ")</i>"));
+                                        }
+                                        // displaying output information for this step
+                                        this_1._containers.outputDetailsContainer.innerHTML = output.join('<br />');
+                                        return [4 /*yield*/, this_1.wait()];
+                                    case 2:
+                                        _b.sent();
+                                        // unhighlighting
+                                        tableColumn.forEach(function (_a) {
+                                            var classList = _a.element.classList;
+                                            return classList.remove('selected');
+                                        });
+                                        cellsModified.forEach(function (_a) {
+                                            var classList = _a.element.classList;
+                                            return classList.remove('selected', 'bad', 'neutral', 'good');
+                                        });
+                                        return [2 /*return*/];
+                                }
+                            });
+                        };
+                        this_1 = this;
+                        i = 0, len = this._inputData.length;
+                        _a.label = 1;
                     case 1:
+                        if (!(i < len)) return [3 /*break*/, 4];
+                        return [5 /*yield**/, _loop_1(i, len)];
+                    case 2:
                         _a.sent();
-                        console.log('done');
-                        return [2 /*return*/];
+                        _a.label = 3;
+                    case 3:
+                        i++;
+                        return [3 /*break*/, 1];
+                    case 4: return [2 /*return*/];
                 }
             });
         });
     };
     CacheEmulator.prototype.doDirectMapped = function (inputTable) {
-        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function () {
-            var bytesPerLine, bitsForOffset, tableData, cacheTable, cache, i, len, output, tableColumn, queriedAddress, lowestAddress, highestAddress, rowNumber, columnNumber, searchRow, searchColumn, cell, existingItem, i_1, i_2;
-            return __generator(this, function (_e) {
-                switch (_e.label) {
+            var _a, tag, index, offset, tableData, cacheTable, cache, i, len, output, tableColumn, queriedAddress, lowestAddress, highestAddress, tagNumber, lineNumber, actualLineNumber, offsetValue, searchRow, existingItem;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
                     case 0:
-                        bytesPerLine = this._data.bytesPerWord * this._data.wordsPerLine;
-                        bitsForOffset = Math.ceil(Math.log2(bytesPerLine));
-                        this._containers.outputDetailsContainer.innerText = "Bits for offset: ".concat(bitsForOffset);
+                        _a = this.getBitsInfo(), tag = _a.tag, index = _a.index, offset = _a.offset;
                         tableData = new Array(this._data.cacheLines).fill([]).map(function (_, i) {
-                            var row = new Array(bytesPerLine + 1);
+                            var row = new Array(3);
                             row[0] = i.toString();
                             return row;
                         });
-                        cacheTable = new Table(tableData, __spreadArray([
-                            'Line #'
-                        ], new Array(bytesPerLine).fill('').map(function (_, i) { return i.toString(); }), true));
+                        cacheTable = new Table(tableData, ['Line #', 'Address Range', 'Tag']);
                         this._containers.outputTableContainer.appendChild(cacheTable.element);
-                        cache = new Array(this._data.cacheLines).fill([]).map(function () { return new Array(bytesPerLine); });
+                        cache = new Array(this._data.cacheLines);
                         i = 0, len = this._inputData.length;
-                        _e.label = 1;
+                        _b.label = 1;
                     case 1:
-                        if (!(i < len)) return [3 /*break*/, 9];
-                        output = ["Sequence #".concat(i + 1)];
+                        if (!(i < len)) return [3 /*break*/, 5];
+                        output = ["Sequence <b>#".concat(i + 1, "</b>: ").concat(this.parseString(this._inputData[i]))];
                         tableColumn = inputTable.getColumn(i);
                         tableColumn.forEach(function (_a) {
                             var classList = _a.element.classList;
                             return classList.add('selected');
                         });
                         queriedAddress = this._inputData[i];
-                        lowestAddress = (this._inputData[i] >> bitsForOffset) << bitsForOffset;
-                        highestAddress = this._inputData[i] | (Math.pow(2, bitsForOffset) - 1);
-                        output.push("Queried address = ".concat(this.parseString(queriedAddress), ", in binary = ").concat(this.parseToBinary(queriedAddress, bitsForOffset)), "Lowest offset address = ".concat(this.parseString(lowestAddress), ", in binary = ").concat(this.parseToBinary(lowestAddress, bitsForOffset)), "Highest offset address = ".concat(this.parseString(highestAddress), ", in binary = ").concat(this.parseToBinary(highestAddress, bitsForOffset)));
-                        rowNumber = queriedAddress % this._data.cacheLines;
-                        columnNumber = queriedAddress & (Math.pow(2, bitsForOffset) - 1);
-                        output.push("Row number = ".concat(this.parseString(queriedAddress), " % ").concat(this._data.cacheLines, " = ").concat(rowNumber, "<br />Column number = Last <b>").concat(bitsForOffset, "</b> bits of address = ").concat(columnNumber
+                        lowestAddress = (this._inputData[i] >> offset) << offset;
+                        highestAddress = this._inputData[i] | (Math.pow(2, offset) - 1);
+                        output.push("<div class='addressInfoContainer'>\n                    <div><span class=\"addressInfo\">Queried address</span> = ".concat(this.parseString(queriedAddress), " = ").concat(this.parseToBinary(queriedAddress), "</div>\n                    <div><span class=\"addressInfo\">Lowest address</span> = ").concat(this.parseString(lowestAddress), " = ").concat(this.parseToBinary(lowestAddress), "</div>\n                    <div><span class=\"addressInfo\">Highest address</span> = ").concat(this.parseString(highestAddress), " = ").concat(this.parseToBinary(highestAddress), "</div>\n                    </div>"));
+                        tagNumber = queriedAddress >> (this._data.addressBusSize - tag);
+                        lineNumber = (queriedAddress >> offset) & (Math.pow(2, index) - 1);
+                        actualLineNumber = lineNumber % this._data.cacheLines;
+                        offsetValue = queriedAddress & (Math.pow(2, offset) - 1);
+                        output.push("Tag = <span class=\"tagBits\">".concat(tagNumber.toString(2).padStart(tag, '0'), "</span> = <b>").concat(tagNumber, "</b>"), "Index (Line) = <span class=\"indexBits\">".concat(lineNumber
                             .toString(2)
-                            .padStart(4, '0'), " = ").concat(columnNumber));
-                        searchRow = cacheTable.getRow(rowNumber);
-                        searchColumn = cacheTable.getColumn(columnNumber + 1);
-                        cell = cacheTable.getCellAt(rowNumber, columnNumber + 1);
-                        (_b = (_a = cacheTable._header) === null || _a === void 0 ? void 0 : _a.cells[columnNumber + 1]) === null || _b === void 0 ? void 0 : _b.element.classList.add('selected');
+                            .padStart(index, '0'), "</span> = <span class=\"indexBits\">").concat(lineNumber, "</span> % ").concat(this._data.cacheLines, " = <b>").concat(actualLineNumber, "</b>"), "Offset (Column) = <span class=\"offsetBits\">".concat(offsetValue
+                            .toString(2)
+                            .padStart(offset, '0'), "</span> = <b>").concat(offsetValue, "</b>"));
+                        searchRow = cacheTable.getRow(lineNumber);
                         searchRow.cells.forEach(function (_a) {
                             var classList = _a.element.classList;
                             return classList.add('selected');
                         });
-                        searchColumn.forEach(function (_a) {
-                            var classList = _a.element.classList;
-                            return classList.add('selected');
-                        });
-                        cell.element.classList.add('doubleSelected');
-                        existingItem = cache[rowNumber][columnNumber];
-                        if (!(existingItem === undefined)) return [3 /*break*/, 3];
-                        // compulsory miss
-                        inputTable.getCellAt(2, i).setValue('M');
-                        output.push("Compulsory miss, filling in line ".concat(rowNumber));
+                        output.push("<i>Checking line number ".concat(lineNumber, " for items with tag ").concat(tag, "</i>"));
+                        searchRow.element.scrollIntoView({ behavior: 'smooth' });
                         this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
                         return [4 /*yield*/, this.wait()];
                     case 2:
-                        _e.sent();
+                        _b.sent();
                         output.pop();
-                        for (i_1 = 0; i_1 < bytesPerLine; i_1++) {
-                            cache[rowNumber][i_1 + 1] = lowestAddress + i_1;
-                            searchRow.cells[i_1 + 1].setValue(this.parseString(lowestAddress + i_1));
+                        existingItem = cache[lineNumber];
+                        if (existingItem === undefined) {
+                            // compulsory miss
+                            inputTable.getCellAt(2, i).setValue('M');
+                            output.push("<i>Compulsory miss, populated line ".concat(lineNumber, "</i>"));
+                            searchRow.cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('neutral');
+                            });
+                            cache[lineNumber] = { lowest: lowestAddress, highest: highestAddress, tag: tagNumber };
+                            searchRow.cells[1].setValue("".concat(this.parseString(lowestAddress), " .. ").concat(this.parseString(highestAddress)));
+                            searchRow.cells[2].setValue(tagNumber.toString());
                         }
-                        output.push('<span style="color: green">Inserted all addresses</span>');
-                        return [3 /*break*/, 6];
-                    case 3:
-                        if (!(existingItem === queriedAddress)) return [3 /*break*/, 4];
-                        // hit
-                        inputTable.getCellAt(2, i).setValue('H');
-                        output.push('Cache hit');
-                        return [3 /*break*/, 6];
-                    case 4:
-                        // conflict miss
-                        // we don't get capacity misses on direct-mapped caches
-                        inputTable.getCellAt(2, i).setValue('H');
-                        output.push("Conflict miss, filling in line ".concat(rowNumber));
-                        this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
-                        return [4 /*yield*/, this.wait()];
-                    case 5:
-                        _e.sent();
-                        output.pop();
-                        for (i_2 = 0; i_2 < bytesPerLine; i_2++) {
-                            cache[rowNumber][i_2 + 1] = lowestAddress + i_2;
-                            searchRow.cells[i_2 + 1].setValue(this.parseString(lowestAddress + i_2));
+                        else if (existingItem.tag === tagNumber) {
+                            // hit
+                            inputTable.getCellAt(2, i).setValue('H');
+                            output.push('<i>Hit, tag number matches</i>');
+                            searchRow.cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('good');
+                            });
                         }
-                        output.push('<span style="color: green">Replaced all addresses</span>');
-                        _e.label = 6;
-                    case 6:
+                        else {
+                            // conflict miss
+                            // we don't get capacity misses on direct-mapped caches
+                            inputTable.getCellAt(2, i).setValue('M');
+                            output.push("<i>Conflict miss (tag at line ".concat(lineNumber, " is ").concat(existingItem.tag, ", expected ").concat(tagNumber, "), repopulated line ").concat(lineNumber, "</i>"));
+                            searchRow.cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('bad');
+                            });
+                            cache[lineNumber] = { lowest: lowestAddress, highest: highestAddress, tag: tagNumber };
+                            searchRow.cells[1].setValue("".concat(this.parseString(lowestAddress), " .. ").concat(this.parseString(highestAddress)));
+                            searchRow.cells[2].setValue(tagNumber.toString());
+                        }
                         // displaying output information for this step
                         this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
                         return [4 /*yield*/, this.wait()];
-                    case 7:
-                        _e.sent();
+                    case 3:
+                        _b.sent();
                         // unhighlighting
-                        (_d = (_c = cacheTable._header) === null || _c === void 0 ? void 0 : _c.cells[columnNumber + 1]) === null || _d === void 0 ? void 0 : _d.element.classList.remove('selected');
                         tableColumn.forEach(function (_a) {
                             var classList = _a.element.classList;
                             return classList.remove('selected');
                         });
                         searchRow.cells.forEach(function (_a) {
                             var classList = _a.element.classList;
-                            return classList.remove('selected');
+                            return classList.remove('selected', 'bad', 'neutral', 'good');
                         });
-                        searchColumn.forEach(function (_a) {
+                        _b.label = 4;
+                    case 4:
+                        i++;
+                        return [3 /*break*/, 1];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    CacheEmulator.prototype.doDirectMappedSimple = function (inputTable) {
+        return __awaiter(this, void 0, void 0, function () {
+            var tableData, cacheTable, cache, i, len, slotNumber, output, tableColumn, cellsModified, existing;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        tableData = new Array(this._data.cacheLines).fill([]).map(function (_, i) {
+                            var row = new Array(2);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        cacheTable = new Table(tableData, ['Line #', 'Address']);
+                        this._containers.outputTableContainer.appendChild(cacheTable.element);
+                        cache = new DummyCache(this._data.cacheLines);
+                        i = 0, len = this._inputData.length;
+                        _a.label = 1;
+                    case 1:
+                        if (!(i < len)) return [3 /*break*/, 5];
+                        slotNumber = this._inputData[i] % this._data.cacheLines;
+                        output = [
+                            "Sequence <b>#".concat(i + 1, "</b>: ").concat(this.parseString(this._inputData[i])),
+                            "Slot # = ".concat(this.parseString(this._inputData[i]), " % ").concat(this._data.cacheLines, " = <b>").concat(this.parseString(slotNumber), "</b>"),
+                        ];
+                        tableColumn = inputTable.getColumn(i);
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.add('selected');
+                        });
+                        this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
+                        return [4 /*yield*/, this.wait()];
+                    case 2:
+                        _a.sent();
+                        output.pop();
+                        cellsModified = void 0;
+                        existing = cache.getItemAt(slotNumber);
+                        if (existing !== null && existing === this._inputData[i]) {
+                            // hit
+                            inputTable.getCellAt(2, i).setValue('H');
+                            cacheTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'good');
+                            });
+                            cellsModified = cacheTable.getRow(slotNumber).cells;
+                            cacheTable.getRow(slotNumber).element.scrollIntoView({ behavior: 'smooth' });
+                            output.push('<i>Hit</i>');
+                        }
+                        else if (existing === null) {
+                            // compulsory miss, able to put in left cache
+                            inputTable.getCellAt(2, i).setValue('M');
+                            cache.setItemAt(slotNumber, this._inputData[i]);
+                            cacheTable.getCellAt(slotNumber, 1).setValue(this.parseString(this._inputData[i]));
+                            cacheTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'neutral');
+                            });
+                            cellsModified = cacheTable.getRow(slotNumber).cells;
+                            cacheTable.getRow(slotNumber).element.scrollIntoView({ behavior: 'smooth' });
+                            output.push("<i>Compulsory miss, added new address to line ".concat(slotNumber, "</i>"));
+                        }
+                        else {
+                            // conflict miss
+                            // we don't get capacity misses on direct-mapped caches
+                            inputTable.getCellAt(2, i).setValue('M');
+                            cache.setItemAt(slotNumber, this._inputData[i]);
+                            cacheTable.getCellAt(slotNumber, 1).setValue(this.parseString(this._inputData[i]));
+                            output.push("<i>Conflict miss, replaced ".concat(this.parseString(existing), " on line ").concat(slotNumber, "</i>"));
+                            cacheTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'bad');
+                            });
+                            cellsModified = cacheTable.getRow(slotNumber).cells;
+                        }
+                        // displaying output information for this step
+                        this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
+                        return [4 /*yield*/, this.wait()];
+                    case 3:
+                        _a.sent();
+                        // unhighlighting
+                        tableColumn.forEach(function (_a) {
                             var classList = _a.element.classList;
                             return classList.remove('selected');
                         });
-                        cell.element.classList.remove('doubleSelected');
-                        _e.label = 8;
-                    case 8:
+                        cellsModified.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.remove('selected', 'bad', 'neutral', 'good');
+                        });
+                        _a.label = 4;
+                    case 4:
                         i++;
                         return [3 /*break*/, 1];
-                    case 9: return [2 /*return*/];
+                    case 5: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    CacheEmulator.prototype.doSetAssociative = function (inputTable) {
+        return __awaiter(this, void 0, void 0, function () {
+            var leftTableData, rightTableData, leftTable, rightTable, blockContainer, leftCache, rightCache, globalCounter, i, len, slotNumber, output, tableColumn, existingLeft, existingRight, cellsModified;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (this._data.cacheLines % 2 !== 0) {
+                            this._containers.outputDetailsContainer.innerHTML =
+                                '<span style="color: red">Cache size (number of lines) must be even for 2-way set associative caching</span>';
+                            return [2 /*return*/];
+                        }
+                        leftTableData = new Array(this._data.cacheLines / 2).fill([]).map(function (_, i) {
+                            var row = new Array(3);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        rightTableData = new Array(this._data.cacheLines / 2).fill([]).map(function (_, i) {
+                            var row = new Array(3);
+                            row[0] = i.toString();
+                            return row;
+                        });
+                        leftTable = new Table(leftTableData, ['Line #', 'Address', 'Local Counter']);
+                        rightTable = new Table(rightTableData, ['Line #', 'Address', 'Local Counter']);
+                        leftTable.element.style.width = '40%';
+                        rightTable.element.style.width = '40%';
+                        blockContainer = document.createElement('div');
+                        blockContainer.style.display = 'flex';
+                        blockContainer.style.justifyContent = 'space-evenly';
+                        blockContainer.appendChild(leftTable.element);
+                        blockContainer.appendChild(rightTable.element);
+                        this._containers.outputTableContainer.appendChild(blockContainer);
+                        leftCache = new DummyCache(this._data.cacheLines / 2);
+                        rightCache = new DummyCache(this._data.cacheLines / 2);
+                        globalCounter = 0;
+                        i = 0, len = this._inputData.length;
+                        _a.label = 1;
+                    case 1:
+                        if (!(i < len)) return [3 /*break*/, 5];
+                        globalCounter++;
+                        slotNumber = this._inputData[i] % (this._data.cacheLines / 2);
+                        output = [
+                            "Sequence <b>#".concat(i + 1, "</b>: ").concat(this.parseString(this._inputData[i])),
+                            "Global Counter: <b>".concat(globalCounter, "</b>"),
+                            "Slot # = ".concat(this.parseString(this._inputData[i]), " % ").concat(this._data.cacheLines / 2, " = ").concat(this.parseString(slotNumber)),
+                        ];
+                        tableColumn = inputTable.getColumn(i);
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.add('selected');
+                        });
+                        this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
+                        return [4 /*yield*/, this.wait()];
+                    case 2:
+                        _a.sent();
+                        output.pop();
+                        existingLeft = leftCache.getItemAt(slotNumber);
+                        existingRight = rightCache.getItemAt(slotNumber);
+                        cellsModified = void 0;
+                        if ((existingLeft === null || existingLeft === void 0 ? void 0 : existingLeft.address) === this._inputData[i]) {
+                            // hit left cache
+                            inputTable.getCellAt(2, i).setValue('H');
+                            leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            leftTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'good');
+                            });
+                            cellsModified = leftTable.getRow(slotNumber).cells;
+                            leftTable.getRow(slotNumber).element.scrollIntoView({ behavior: 'smooth' });
+                            leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            output.push('<i>Hit left table (set 0), updated local counter</i>');
+                        }
+                        else if ((existingRight === null || existingRight === void 0 ? void 0 : existingRight.address) === this._inputData[i]) {
+                            // hit right cache
+                            inputTable.getCellAt(2, i).setValue('H');
+                            rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            rightTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'good');
+                            });
+                            cellsModified = rightTable.getRow(slotNumber).cells;
+                            rightTable.getRow(slotNumber).element.scrollIntoView({ behavior: 'smooth' });
+                            rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            output.push('<i>Hit right table (set 1), updated local counter</i>');
+                        }
+                        else if (existingLeft === null) {
+                            // compulsory miss, able to put in left cache
+                            inputTable.getCellAt(2, i).setValue('M');
+                            leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            leftTable.getCellAt(slotNumber, 1).setValue(this.parseString(this._inputData[i]));
+                            leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            leftTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'neutral');
+                            });
+                            cellsModified = leftTable.getRow(slotNumber).cells;
+                            leftTable.getRow(slotNumber).element.scrollIntoView({ behavior: 'smooth' });
+                            output.push("<i>Compulsory miss, added new address to line ".concat(slotNumber, " (set 0)</i>"));
+                        }
+                        else if (existingRight === null) {
+                            // compulsory miss, able to put in right cache
+                            inputTable.getCellAt(2, i).setValue('M');
+                            rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                            rightTable.getCellAt(slotNumber, 1).setValue(this.parseString(this._inputData[i]));
+                            rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                            rightTable
+                                .getRow(slotNumber)
+                                .cells.forEach(function (_a) {
+                                var classList = _a.element.classList;
+                                return classList.add('selected', 'neutral');
+                            });
+                            cellsModified = rightTable.getRow(slotNumber).cells;
+                            rightTable.getRow(slotNumber).element.scrollIntoView({ behavior: 'smooth' });
+                            output.push("<i>Compulsory miss, added new address to line ".concat(slotNumber, " (set 1)</i>"));
+                        }
+                        else {
+                            // conflict miss
+                            // we don't get capacity misses on set associative caches
+                            inputTable.getCellAt(2, i).setValue('M');
+                            if (existingLeft.localCounter < existingRight.localCounter) {
+                                // remove left item
+                                leftCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                                leftTable.getCellAt(slotNumber, 1).setValue(this.parseString(this._inputData[i]));
+                                leftTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                                output.push("<i>Conflict miss, replaced ".concat(this.parseString(existingLeft.address), " (had lower local counter, ").concat(existingLeft.localCounter, " vs ").concat(existingRight.localCounter, ") on line ").concat(slotNumber, "</i>"));
+                                leftTable
+                                    .getRow(slotNumber)
+                                    .cells.forEach(function (_a) {
+                                    var classList = _a.element.classList;
+                                    return classList.add('selected', 'bad');
+                                });
+                                cellsModified = leftTable.getRow(slotNumber).cells;
+                            }
+                            else {
+                                // remove right item
+                                rightCache.setItemAt(slotNumber, { address: this._inputData[i], localCounter: globalCounter });
+                                rightTable.getCellAt(slotNumber, 1).setValue(this.parseString(this._inputData[i]));
+                                rightTable.getCellAt(slotNumber, 2).setValue(globalCounter.toString());
+                                output.push("<i>Conflict miss, replaced ".concat(this.parseString(existingRight.address), " (had lower local counter, ").concat(existingRight.localCounter, " vs ").concat(existingRight.localCounter, ") on line ").concat(slotNumber, "</i>"));
+                                rightTable
+                                    .getRow(slotNumber)
+                                    .cells.forEach(function (_a) {
+                                    var classList = _a.element.classList;
+                                    return classList.add('selected', 'bad');
+                                });
+                                cellsModified = rightTable.getRow(slotNumber).cells;
+                            }
+                        }
+                        // displaying output information for this step
+                        this._containers.outputDetailsContainer.innerHTML = output.join('<br />');
+                        return [4 /*yield*/, this.wait()];
+                    case 3:
+                        _a.sent();
+                        // unhighlighting
+                        tableColumn.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.remove('selected');
+                        });
+                        cellsModified.forEach(function (_a) {
+                            var classList = _a.element.classList;
+                            return classList.remove('selected', 'bad', 'neutral', 'good');
+                        });
+                        _a.label = 4;
+                    case 4:
+                        i++;
+                        return [3 /*break*/, 1];
+                    case 5: return [2 /*return*/];
                 }
             });
         });
     };
     CacheEmulator.prototype.wait = function (ms) {
         var _this = this;
-        if (ms === void 0) { ms = 1000; }
+        if (ms === void 0) { ms = CacheEmulator._autoTimePeriod; }
         if (this._data.autoMode) {
             return new Promise(function (resolve) { return setTimeout(resolve, ms); });
         }
@@ -1005,33 +910,14 @@ var CacheEmulator = /** @class */ (function () {
             };
         });
     };
-    CacheEmulator.prototype.doSetAssociative = function (inputTable) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        console.log('doing SetAssociative');
-                        return [4 /*yield*/, new Promise(function (res) { return setTimeout(res, 1000); })];
-                    case 1:
-                        _a.sent();
-                        console.log('done');
-                        return [2 /*return*/];
-                }
-            });
-        });
-    };
     CacheEmulator.prototype.showIntermediateOutput = function () {
-        var rawBitsForIndex = Math.log2(this._data.cacheLines || 1);
-        var bitsForIndex = Math.ceil(rawBitsForIndex);
-        var rawBitsForOffset = Math.log2(this._data.wordsPerLine * this._data.bytesPerWord || 1);
-        var bitsForOffset = Math.ceil(rawBitsForOffset);
-        var bitsForTag = this._data.addressBusSize - bitsForIndex - bitsForOffset;
+        var _a = this.getBitsInfo(), tag = _a.tag, index = _a.index, offset = _a.offset;
         var totalBytes = this._data.cacheLines * this._data.wordsPerLine * this._data.bytesPerWord;
         var totalAsLog = Math.log2(totalBytes);
         var extraSizeInfo = Number.isInteger(totalAsLog) ? " (2<sup>".concat(totalAsLog, "</sup>)") : '';
         var output = [
-            "This cache has <b title=\"".concat(rawBitsForIndex, "\">").concat(bitsForIndex, "</b> bits for index, <b title=\"").concat(rawBitsForOffset, "\">").concat(bitsForOffset, "</b> bits for offset, and <b>").concat(bitsForTag, "</b> bits for tag."),
-            "It can store a total of <b>".concat(totalBytes, "</b>").concat(extraSizeInfo, " bytes."),
+            "Addresses to this cache have <b><span class=\"tagBits\">".concat(tag, "</span></b> bits for tag, <b><span class=\"indexBits\">").concat(index, "</span></b> bits for index, and <b><span class=\"offsetBits\">").concat(offset, "</span></b> bits for offset."),
+            "This cache can store a total of <b>".concat(totalBytes, "</b>").concat(extraSizeInfo, " bytes."),
         ];
         this._containers.preOutput.innerHTML = output.join('<br />');
     };
@@ -1043,20 +929,26 @@ var CacheEmulator = /** @class */ (function () {
         return n.toString();
     };
     /** Parse a number into a binary string, spacing out nibbles. */
-    CacheEmulator.prototype.parseToBinary = function (n, offsetBits) {
-        var output = '';
-        var lowestBitBeforePaint = 16 - offsetBits - 1;
-        var rawString = n.toString(2).padStart(16, '0');
-        for (var i = 0; i < 16; i++) {
+    CacheEmulator.prototype.parseToBinary = function (n) {
+        var _a = this.getBitsInfo(), offset = _a.offset, index = _a.index;
+        var output = '<span class="tagBits">';
+        var endOffset = this._data.addressBusSize - offset - 1;
+        var endTag = endOffset - index;
+        var rawString = n.toString(2).padStart(this._data.addressBusSize, '0');
+        for (var i = 0; i < this._data.addressBusSize; i++) {
             output += rawString.substring(i, i + 1);
             if (i % 4 === 3) {
-                output += ' ';
+                // space between nibbles
+                output += '&emsp;';
             }
-            if (i === lowestBitBeforePaint) {
-                output += "<b style=\"cursor: help\" title=\"Last ".concat(offsetBits, " bits\">");
+            if (i === endOffset) {
+                output += '</span><span class="offsetBits">';
+            }
+            else if (i === endTag) {
+                output += '</span><span class="indexBits">';
             }
         }
-        output += '</b>';
+        output += '</span>';
         return output;
     };
     CacheEmulator.prototype.createSelectElement = function (props) {
@@ -1098,6 +990,7 @@ var CacheEmulator = /** @class */ (function () {
         return select;
     };
     CacheEmulator.prototype.createInputElement = function (props) {
+        var _a, _b;
         var input = document.createElement('input');
         if (props === null || props === void 0 ? void 0 : props.title)
             input.title = props.title;
@@ -1124,13 +1017,19 @@ var CacheEmulator = /** @class */ (function () {
                 label.title = props.title;
                 label.style.cursor = 'help';
             }
+            if (props.classes)
+                (_a = label.classList).add.apply(_a, props.classes);
             var container = document.createElement('div');
             container.appendChild(label);
             container.appendChild(input);
             props.parent.appendChild(container);
         }
-        else if (props === null || props === void 0 ? void 0 : props.parent)
-            props.parent.appendChild(input);
+        else {
+            if (props === null || props === void 0 ? void 0 : props.classes)
+                (_b = input.classList).add.apply(_b, props.classes);
+            if (props === null || props === void 0 ? void 0 : props.parent)
+                props.parent.appendChild(input);
+        }
         return input;
     };
     CacheEmulator.prototype.saveValues = function () {
@@ -1152,6 +1051,16 @@ var CacheEmulator = /** @class */ (function () {
         }
         return CacheEmulator.Defaults;
     };
+    Object.defineProperty(CacheEmulator, "timePeriod", {
+        set: function (n) {
+            if (n < 0)
+                return;
+            this._autoTimePeriod = n;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    CacheEmulator._autoTimePeriod = 1000;
     CacheEmulator.Defaults = {
         addressBusSize: 20,
         cacheLines: 32,
@@ -1159,7 +1068,6 @@ var CacheEmulator = /** @class */ (function () {
         bytesPerWord: 4,
         hexMode: true,
         autoMode: false,
-        disableSpatialLocality: false,
         inputData: '1273E 12719 12819 1173E 1273F 12839 12710 12800',
         cacheType: CacheTypes.DirectMapped,
     };

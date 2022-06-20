@@ -6,48 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caches</title>
     <link href="caches.css" rel="stylesheet" type="text/css">
+    <link href="../styles.css" rel="stylesheet" type="text/css">
 </head>
 <body>
     <main>
         <div id='cacheEmulation'></div>
-        <div id="LRUReplacement">
-            <h2>Cache Emulation</h3>
-            <p>Record hits and misses using the standard RLU replacement policy on a fully-associative cache, or modulus on direct-mapped and 2-way set associative caches.</p>
-            <div>
-                <label for="LRUReplacementCacheSize">Cache size (number of lines):</label>
-                <input id="LRUReplacementCacheSize" type="number" placeholder="4" oninput="LRUReplacement.cacheSize = Number(this.value)" />
-                <label for="LRUReplacementInputData">Input data:</label>
-                <input id="LRUReplacementInputData" placeholder="0x16 105 8.2 0xFF" oninput="LRUReplacement.inputData(this.value)" >
-                <input id="LRUReplacementShowHexNumbers" type="checkbox" oninput="LRUReplacement.setHexMode(this.checked)" />
-                <label for="LRUReplacementShowHexNumbers">Hex Display</label>
-                <select name="cacheType" id="LRUReplacementCacheTypeSelect" oninput="LRUReplacement.setCacheType(this.value)">
-                    <option value="fullyAssociative">Fully-Associative</option>
-                    <option value="directMapped">Direct-Mapped</option>
-                    <option value="setAssociative">Set Associative</option>
-                </select>
-                <input type="checkbox" id="LRUAdvancedModeToggle" />
-                <label for="LRUAdvancedModeToggle">Spatial Locality Options</label>
-                <div id="LRUSpatialLocalityOptionsContainer" style="visibility: hidden;"></div>
-                <div title="If checked, will automatically go through insertion steps.">
-                    <input id="LRUReplacementAutoMode" type="checkbox" oninput="LRUReplacement.setAutoMode(this.checked)" checked />
-                    <label for="LRUReplacementAutoMode">Automatic Mode</label>
-                </div>
-                <div style="display:flex;">
-                    <div style="flex-grow:1">
-                        
-                        <button id="LRUReplacementGoButton" onclick="LRUReplacement.start()">Go</button>
-                    </div>
-                    <button onclick="LRUReplacement.loadSampleData()">Sample Data</button>
-                    <button onclick="LRUReplacement.loadDirectSampleData()">Sample Data (Direct)</button>
-                    <button onclick="LRUReplacement.loadSetAssociativeSampleData1()">Sample Data (Set Associative 1)</button>
-                    <button onclick="LRUReplacement.loadSetAssociativeSampleData2()">Sample Data (Set Associative 2)</button>
-                </div>
-                <div id="LRUReplacementInputTableContainer" style="margin: 1rem 0;"></div>
-            </div>
-            <div id="LRUReplacementOutputContainer">
-            </div>
-            <button id="LRUReplacementNextButton" style="visibility: hidden; margin-top: 2px;">Next Step</button>
-        </div>
     </main>
     <script defer src="./caches.js"></script>
 </body>
